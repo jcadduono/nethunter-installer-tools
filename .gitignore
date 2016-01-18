@@ -1,0 +1,10 @@
+*.o
+/lz4/lz4
+/hid-keyboard/hid-keyboard
+/mkbootimg/mkbootimg
+/mkbootimg/unpackbootimg
+/libusb/libusb.so
+/libreadline/libreadline.so
+/libtermcap/libtermcap.so
+/proxmark3/proxmark3
+/out

@@ -1,0 +1,61 @@
+#!/bin/bash
+
+BASEDIR="$(readlink -f ~/build/toolchain)"
+
+case "$ARCH" in
+amd64|x86_64|x64)
+	export ARCH=x86_64
+	export HOST=x86_64-linux-android
+	TOOLCHAIN="$BASEDIR/android-amd64-4.9"
+;;
+arm64|aarch64)
+	export ARCH=arm64
+	export HOST=aarch64-linux-android
+	TOOLCHAIN="$BASEDIR/android-arm64-4.9"
+;;
+*)
+	export ARCH=arm
+	export HOST=arm-linux-androideabi
+	TOOLCHAIN="$BASEDIR/android-arm-4.9"
+;;
+esac
+
+case "$O" in
+0) OPTIMIZE=;;
+s) OPTIMIZE=-Os;;
+3) OPTIMIZE=-O3;;
+*) OPTIMIZE=-O2;;
+esac
+
+if [ "$TWRP" ]; then
+	LINKER="/sbin/linker"
+else
+	LINKER="/system/bin/linker"
+fi
+
+export PATH="$PATH:$TOOLCHAIN/bin"
+export CROSS_COMPILE="$TOOLCHAIN/bin/$HOST-"
+export TARGET="$HOST"
+export CFLAGS="$OPTIMIZE -fomit-frame-pointer -fPIE"
+export CXXFLAGS="$CFLAGS"
+export LDFLAGS="-fPIE -pie -mandroid -mbionic -Wl,-dynamic-linker,$LINKER"
+export HOST_CC="gcc"
+export HOST_CXX="g++"
+export CC="$CROSS_COMPILE$HOST_CC"
+export CXX="$CROSS_COMPILE$HOST_CXX"
+export CROSS="$CROSS_COMPILE"
+export SYSROOT="$TOOLCHAIN/sysroot"
+export DESTDIR="$SYSROOT"
+export PREFIX="$DESTDIR/usr"
+export TARGET_FLAGS="--sysroot $SYSROOT $TARGET_CFLAGS"
+export TARGET_SYS="Linux"
+export TARGET_CFLAGS="$CFLAGS"
+export TARGET_CXXFLAGS="$CXXFLAGS"
+export TARGET_LDFLAGS="$LDFLAGS"
+
+echo "Cross-compiling set up for $HOST"
+echo "CC: $CC"
+echo "CXX: $CXX"
+echo "CFLAGS: $CFLAGS"
+echo "CXXFLAGS: $CXXFLAGS"
+echo "LDFLAGS: $LDFLAGS"
