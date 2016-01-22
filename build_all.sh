@@ -86,6 +86,18 @@ copy_proxmark3() {
 	make clean
 }
 
+build_screenres() {
+	echo "Building screenres..."
+	cd $RDIR/screenres
+	make clean all
+}
+
+copy_screenres() {
+	cd $RDIR/screenres
+	mv screenres $OUT/
+	make clean
+}
+
 rm -rf $RDIR/out
 mkdir $RDIR/out
 
@@ -101,6 +113,7 @@ for arch in arm arm64 amd64; do
 	build_libtermcap
 	build_libusb
 	build_proxmark3
+	build_screenres
 
 	copy_hid_keyboard
 	copy_lz4
@@ -109,6 +122,7 @@ for arch in arm arm64 amd64; do
 	copy_libtermcap
 	copy_libusb
 	copy_proxmark3
+	copy_screenres
 done
 
 echo "Done."
