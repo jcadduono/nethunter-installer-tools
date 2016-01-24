@@ -1,0 +1,3 @@
+[submodule "dropbear"]
+	path = dropbear
+	url = https://github.com/u1234x1234/dropbear.git

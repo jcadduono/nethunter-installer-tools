@@ -2,6 +2,20 @@
 
 RDIR=$(pwd)
 
+build_dropbear() {
+        echo "Building dropbear..."
+        cd $RDIR/dropbear
+	autoconf && autoheader
+	./configure --host=$HOST --disable-utmp --disable-wtmp --disable-utmpx --disable-utmpx --disable-zlib --disable-syslog --prefix=/data/local/nhsystem/kali-armhf
+        make clean all
+}
+
+copy_dropbear() {
+        cd $RDIR/dropbear
+        mv dropbear $OUT/
+        make clean
+}
+
 build_hid_keyboard() {
 	echo "Building hid-keyboard..."
 	cd $RDIR/hid-keyboard
