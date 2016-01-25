@@ -32,7 +32,7 @@ build_nmap(){
 	make install
 }
 
-clean_nmap(){
+copy_nmap(){
 	cp -rf /data $OUT/
 	cd $RDIR/openssl-1.0.2e
 	make clean
