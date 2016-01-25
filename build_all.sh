@@ -8,6 +8,14 @@ build_dropbear() {
     echo "Building dropbear..."
     cd $RDIR/dropbear
 	autoconf && autoheader
+
+	# Check if patch already applied
+	patch -p0 -N --dry-run --silent < ../patches/dropbear.patch 2>/dev/null
+	if [ $? -eq 1 ]; then
+		#apply the patch
+		patch -p0 -N < ../patches/dropbear.patch
+	fi
+	
 	./configure --host=$HOST --disable-utmp --disable-wtmp --disable-utmpx --disable-utmpx --disable-zlib --disable-syslog --prefix=/data/local/nhsystem
     make clean all
 }
@@ -15,7 +23,10 @@ build_dropbear() {
 copy_dropbear() {
 	cd $RDIR/dropbear
 	mv dropbear $OUT/
-	make clean all
+	mv dropbearconvert $OUT/
+	mv dropbearkey $OUT/
+	mv dbclient $OUT/
+	make clean
 }
 
 build_nmap(){
@@ -27,7 +38,7 @@ build_nmap(){
 	make install
 	echo "Building nmap"
 	cd $RDIR/nmap
-	LUA_CFLAGS="-DLUA_USE_POSIX -fvisibility=default -fPIE" ac_cv_linux_vers=2 CC=$CC LD=$LD CXX=$CXX AR=$AR RANLIB=$RANLIB STRIP=$CROSS_COMPILEstrip CFLAGS="-fvisibility=default -fPIE" CXXFLAGS="-fvisibility=default -fPIE" LDFLAGS="-rdynamic -pie" ./configure --host=$HOST --without-zenmap --with-liblua=included --with-libpcap=internal --with-pcap=linux --enable-static --prefix=/data/local/nhsystem/nmap7 --with-openssl=/data/local/nhsystem/openssl
+	LUA_CFLAGS="-DLUA_USE_POSIX -fvisibility=default -fPIE" ac_cv_linux_vers=2 CC=$CC LD=$LD CXX=$CXX AR=$AR RANLIB=$RANLIB STRIP=$CROSS_COMPILEstrip CFLAGS="-fvisibility=default -fPIE" CXXFLAGS="-fvisibility=default -fPIE" LDFLAGS="-rdynamic -pie" ./configure --host=$HOST --without-ndiff --without-nmap-update --without-zenmap --with-liblua=included --with-libpcap=internal --with-pcap=linux --enable-static --prefix=/data/local/nhsystem/nmap7 --with-openssl=/data/local/nhsystem/openssl
 	make
 	make install
 }
@@ -167,6 +178,7 @@ for arch in arm arm64 amd64; do
 	mkdir -p $OUT
 	ARCH=$arch . $RDIR/android
 
+	build_dropbear
 	build_nmap
 	build_tcpdump
 	build_hid_keyboard
@@ -178,6 +190,7 @@ for arch in arm arm64 amd64; do
 	build_proxmark3
 	build_screenres
 
+	copy_dropbear
 	copy_nmap
 	copy_tcpdump
 	copy_hid_keyboard
