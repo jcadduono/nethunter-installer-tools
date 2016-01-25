@@ -15,7 +15,7 @@ build_dropbear() {
 copy_dropbear() {
         cd $RDIR/dropbear
         mv dropbear $OUT/
-        make clean
+        make clean all
 }
 
 build_nmap(){
@@ -38,6 +38,7 @@ clean_nmap(){
 	make clean
         cd $RDIR/nmap
 	make clean
+	cp -rf /data/local/nhsystem/nmap7/bin/n* $OUT/
 }
 
 build_tcpdump(){
@@ -57,7 +58,7 @@ build_tcpdump(){
 
 copy_tcpdump(){
 	cd $RDIR/tcpdump
-	cp $SYSROOT/usr/local/sbin/tcpdump $OUT/
+	mv $SYSROOT/usr/local/sbin/tcpdump $OUT/
 	make clean
 }
 
