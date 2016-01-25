@@ -1,12 +1,14 @@
 #!/bin/bash
 
 RDIR=$(pwd)
+git submodule init
+git submodule update
 
 build_dropbear() {
         echo "Building dropbear..."
         cd $RDIR/dropbear
 	autoconf && autoheader
-	./configure --host=$HOST --disable-utmp --disable-wtmp --disable-utmpx --disable-utmpx --disable-zlib --disable-syslog --prefix=/data/local/nhsystem/kali-armhf
+	./configure --host=$HOST --disable-utmp --disable-wtmp --disable-utmpx --disable-utmpx --disable-zlib --disable-syslog --prefix=/data/local/nhsystem
         make clean all
 }
 
@@ -14,6 +16,49 @@ copy_dropbear() {
         cd $RDIR/dropbear
         mv dropbear $OUT/
         make clean
+}
+
+build_nmap(){
+	cd $RDIR/openssl
+	echo "Building openssl"
+	CC=$CC AR="$AR r" RANLIB=$RANLIB LDFLAGS="-static" ./Configure dist --prefix=/data/local/nhsystem/openssl
+	make clean
+	make CC=$CC AR="$AR r" RANLIB=$RANLIB LDFLAGS="-static"
+	make install
+	echo "Building nmap"
+	cd $RDIR/nmap
+	LUA_CFLAGS="-DLUA_USE_POSIX -fvisibility=default -fPIE" ac_cv_linux_vers=2 CC=$CC LD=$LD CXX=$CXX AR=$AR RANLIB=$RANLIB STRIP=$CROSS_COMPILEstrip CFLAGS="-fvisibility=default -fPIE" CXXFLAGS="-fvisibility=default -fPIE" LDFLAGS="-rdynamic -pie" ./configure --host=$HOST --without-zenmap --with-liblua=included --with-libpcap=internal --with-pcap=linux --enable-static --prefix=/data/local/nhsystem/nmap7 --with-openssl=/data/local/nhsystem/openssl
+	make
+	make install
+}
+
+clean_nmap(){
+	cp -rf /data $OUT/
+	cd $RDIR/openssl
+	make clean
+        cd $RDIR/nmap
+	make clean
+}
+
+build_tcpdump(){
+	echo "Building libpcap"
+	cd $RDIR/libpcap
+	LDFLAGS=-static ./configure --host=$HOST --with-pcap=linux ac_cv_linux_vers=2
+	make
+	make install
+	echo "Building TCPDUMP"
+	cd $RDIR/tcpdump
+	sed -i".bak" "s/setprotoent/\/\/setprotoent/g" print-isakmp.c
+	sed -i".bak" "s/endprotoent/\/\/endprotoent/g" print-isakmp.c
+	./configure --host=$HOST --with-pcap=linux ac_cv_linux_vers=2 --with-crypto=no
+	make
+	make install
+}
+
+copy_tcpdump(){
+	cd $RDIR/tcpdump
+	cp $SYSROOT/usr/local/sbin/tcpdump $OUT/
+	make clean
 }
 
 build_hid_keyboard() {
@@ -117,9 +162,11 @@ mkdir $RDIR/out
 
 for arch in arm arm64 amd64; do
 	OUT=$RDIR/out/$arch
-	mkdir $OUT
+	mkdir -p $OUT
 	ARCH=$arch . $RDIR/android
 
+	build_nmap
+	build_tcpdump
 	build_hid_keyboard
 	build_lz4
 	build_mkbootimg
@@ -129,6 +176,8 @@ for arch in arm arm64 amd64; do
 	build_proxmark3
 	build_screenres
 
+	copy_nmap
+	copy_tcpdump
 	copy_hid_keyboard
 	copy_lz4
 	copy_mkbootimg
