@@ -5,17 +5,17 @@ git submodule init
 git submodule update
 
 build_dropbear() {
-        echo "Building dropbear..."
-        cd $RDIR/dropbear
+    echo "Building dropbear..."
+    cd $RDIR/dropbear
 	autoconf && autoheader
 	./configure --host=$HOST --disable-utmp --disable-wtmp --disable-utmpx --disable-utmpx --disable-zlib --disable-syslog --prefix=/data/local/nhsystem
-        make clean all
+    make clean all
 }
 
 copy_dropbear() {
-        cd $RDIR/dropbear
-        mv dropbear $OUT/
-        make clean all
+	cd $RDIR/dropbear
+	mv dropbear $OUT/
+	make clean all
 }
 
 build_nmap(){
@@ -36,9 +36,10 @@ clean_nmap(){
 	cp -rf /data $OUT/
 	cd $RDIR/openssl-1.0.2e
 	make clean
-        cd $RDIR/nmap
+    cd $RDIR/nmap
 	make clean
-	cp -rf /data/local/nhsystem/nmap7/bin/n* $OUT/
+	cp -rf /data/local/nhsystem/nmap7/bin/* $OUT/
+	rm -rf /data/local/nhsystem/nmap7
 }
 
 build_tcpdump(){
