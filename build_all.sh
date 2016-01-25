@@ -19,7 +19,7 @@ copy_dropbear() {
 }
 
 build_nmap(){
-	cd $RDIR/openssl
+	cd $RDIR/openssl-1.0.2e
 	echo "Building openssl"
 	CC=$CC AR="$AR r" RANLIB=$RANLIB LDFLAGS="-static" ./Configure dist --prefix=/data/local/nhsystem/openssl
 	make clean
@@ -34,7 +34,7 @@ build_nmap(){
 
 clean_nmap(){
 	cp -rf /data $OUT/
-	cd $RDIR/openssl
+	cd $RDIR/openssl-1.0.2e
 	make clean
         cd $RDIR/nmap
 	make clean
