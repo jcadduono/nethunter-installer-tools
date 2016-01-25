@@ -1,7 +1,20 @@
-diff -rup dropbear-2013.58.orig/options.h dropbear-2013.58/options.h
---- dropbear-2013.58.orig/options.h	2013-07-03 14:58:01.000000000 +0200
-+++ dropbear-2013.58/options.h	2013-07-03 15:00:10.000000000 +0200
-@@ -21,10 +21,10 @@
+From f6e986f9cf2144514860bffc4ef904945ec638e8 Mon Sep 17 00:00:00 2001
+From: binkybear <binkybear@nethunter.com>
+Date: Mon, 25 Jan 2016 14:57:28 -0600
+Subject: [PATCH] Patch for Nethunter
+
+Signed-off-by: binkybear <binkybear@nethunter.com>
+---
+ options.h         | 18 +++++++++---------
+ svr-auth.c        | 16 ++++++++++++++++
+ svr-chansession.c | 12 ++++++++++++
+ 3 files changed, 37 insertions(+), 9 deletions(-)
+
+diff --git a/options.h b/options.h
+index 27e2a02..936946d 100644
+--- a/options.h
++++ b/options.h
+@@ -21,13 +21,13 @@
  
  /* Default hostkey paths - these can be specified on the command line */
  #ifndef DSS_PRIV_FILENAME
@@ -12,9 +25,13 @@ diff -rup dropbear-2013.58.orig/options.h dropbear-2013.58/options.h
 -#define RSA_PRIV_FILENAME "/etc/dropbear/dropbear_rsa_host_key"
 +#define RSA_PRIV_FILENAME "/data/local/nhsystem/dropbear/dropbear_rsa_host_key"
  #endif
+ #ifndef ECDSA_PRIV_FILENAME
+-#define ECDSA_PRIV_FILENAME "/etc/dropbear/dropbear_ecdsa_host_key"
++#define ECDSA_PRIV_FILENAME "/data/local/nhsystem/dropbear/dropbear_ecdsa_host_key"
+ #endif
  
  /* Set NON_INETD_MODE if you require daemon functionality (ie Dropbear listens
-@@ -38,7 +38,7 @@
+@@ -41,7 +41,7 @@
   * Both of these flags can be defined at once, don't compile without at least
   * one of them. */
  #define NON_INETD_MODE
@@ -23,8 +40,8 @@ diff -rup dropbear-2013.58.orig/options.h dropbear-2013.58/options.h
  
  /* Setting this disables the fast exptmod bignum code. It saves ~5kB, but is
   * perhaps 20% slower for pubkey operations (it is probably worth experimenting
-@@ -52,7 +52,7 @@ much traffic. */
- /*#define DROPBEAR_SMALL_CODE*/
+@@ -55,7 +55,7 @@ much traffic. */
+ #define DROPBEAR_SMALL_CODE
  
  /* Enable X11 Forwarding - server only */
 -#define ENABLE_X11FWD
@@ -32,7 +49,7 @@ diff -rup dropbear-2013.58.orig/options.h dropbear-2013.58/options.h
  
  /* Enable TCP Fowarding */
  /* 'Local' is "-L" style (client listening port forwarded via server)
-@@ -157,7 +157,7 @@ much traffic. */
+@@ -189,7 +189,7 @@ If you test it please contact the Dropbear author */
  
  /* Whether to print the message of the day (MOTD). This doesn't add much code
   * size */
@@ -41,16 +58,16 @@ diff -rup dropbear-2013.58.orig/options.h dropbear-2013.58/options.h
  
  /* The MOTD file path */
  #ifndef MOTD_FILENAME
-@@ -174,7 +174,7 @@ much traffic. */
-  * PAM challenge/response.
-  * You can't enable both PASSWORD and PAM. */
+@@ -208,7 +208,7 @@ If you test it please contact the Dropbear author */
  
+ /* This requires crypt() */
+ #ifdef HAVE_CRYPT
 -#define ENABLE_SVR_PASSWORD_AUTH
 +#undef ENABLE_SVR_PASSWORD_AUTH
+ #endif
  /* PAM requires ./configure --enable-pam */
- //#define ENABLE_SVR_PAM_AUTH
- #define ENABLE_SVR_PUBKEY_AUTH
-@@ -241,7 +241,7 @@ much traffic. */
+ /*#define ENABLE_SVR_PAM_AUTH */
+@@ -282,7 +282,7 @@ Homedir is prepended unless path begins with / */
  /* The default file to store the daemon's process ID, for shutdown
     scripts etc. This can be overridden with the -P flag */
  #ifndef DROPBEAR_PIDFILE
@@ -59,7 +76,7 @@ diff -rup dropbear-2013.58.orig/options.h dropbear-2013.58/options.h
  #endif
  
  /* The command to invoke for xauth when using X11 forwarding.
-@@ -296,7 +296,7 @@ be overridden at runtime with -I. 0 disa
+@@ -342,7 +342,7 @@ be overridden at runtime with -I. 0 disables idle timeouts */
  #define DEFAULT_IDLE_TIMEOUT 0
  
  /* The default path. This will often get replaced by the shell */
@@ -68,22 +85,11 @@ diff -rup dropbear-2013.58.orig/options.h dropbear-2013.58/options.h
  
  /* Some other defines (that mostly should be left alone) are defined
   * in sysoptions.h */
-diff -rup dropbear-2013.58.orig/scp.c dropbear-2013.58/scp.c
---- dropbear-2013.58.orig/scp.c	2013-07-03 14:57:58.000000000 +0200
-+++ dropbear-2013.58/scp.c	2013-07-03 14:58:43.000000000 +0200
-@@ -992,7 +992,7 @@ sink(int argc, char **argv)
- 			continue;
- 		}
- 		omode = mode;
--		mode |= S_IWRITE;
-+		mode |= S_IWUSR;
- 		if ((ofd = open(np, O_WRONLY|O_CREAT, mode)) < 0) {
- bad:			run_err("%s: %s", np, strerror(errno));
- 			continue;
-diff -rup dropbear-2013.58.orig/svr-auth.c dropbear-2013.58/svr-auth.c
---- dropbear-2013.58.orig/svr-auth.c	2013-07-03 14:57:58.000000000 +0200
-+++ dropbear-2013.58/svr-auth.c	2013-07-03 14:59:46.000000000 +0200
-@@ -289,6 +289,7 @@ static int checkusername(unsigned char *
+diff --git a/svr-auth.c b/svr-auth.c
+index 66db4fc..9be874f 100644
+--- a/svr-auth.c
++++ b/svr-auth.c
+@@ -291,6 +291,7 @@ static int checkusername(char *username, unsigned int userlen) {
  	 * should return some standard shells like "/bin/sh" and "/bin/csh" (this
  	 * is platform-specific) */
  	setusershell();
@@ -91,7 +97,7 @@ diff -rup dropbear-2013.58.orig/svr-auth.c dropbear-2013.58/svr-auth.c
  	while ((listshell = getusershell()) != NULL) {
  		TRACE(("test shell is '%s'", listshell))
  		if (strcmp(listshell, usershell) == 0) {
-@@ -409,3 +410,18 @@ void send_msg_userauth_success() {
+@@ -407,3 +408,18 @@ void send_msg_userauth_success() {
  	TRACE(("leave send_msg_userauth_success"))
  
  }
@@ -110,10 +116,11 @@ diff -rup dropbear-2013.58.orig/svr-auth.c dropbear-2013.58/svr-auth.c
 +    TRACE(("leaving fake-getpwnam"));
 +    return &pass;
 +}
-diff -rup dropbear-2013.58.orig/svr-chansession.c dropbear-2013.58/svr-chansession.c
---- dropbear-2013.58.orig/svr-chansession.c	2013-07-03 14:57:58.000000000 +0200
-+++ dropbear-2013.58/svr-chansession.c	2013-07-03 15:41:07.000000000 +0200
-@@ -874,6 +874,10 @@ static void execchild(void *user_data) {
+diff --git a/svr-chansession.c b/svr-chansession.c
+index bfaf7f6..4d11168 100644
+--- a/svr-chansession.c
++++ b/svr-chansession.c
+@@ -905,6 +905,10 @@ static void execchild(void *user_data) {
  	seedrandom();
  #endif
  
@@ -124,7 +131,7 @@ diff -rup dropbear-2013.58.orig/svr-chansession.c dropbear-2013.58/svr-chansessi
  	/* clear environment */
  	/* if we're debugging using valgrind etc, we need to keep the LD_PRELOAD
  	 * etc. This is hazardous, so should only be used for debugging. */
-@@ -913,6 +917,14 @@ static void execchild(void *user_data) {
+@@ -944,6 +948,14 @@ static void execchild(void *user_data) {
  	}
  
  	/* set env vars */
@@ -139,15 +146,3 @@ diff -rup dropbear-2013.58.orig/svr-chansession.c dropbear-2013.58/svr-chansessi
  	addnewvar("USER", ses.authstate.pw_name);
  	addnewvar("LOGNAME", ses.authstate.pw_name);
  	addnewvar("HOME", ses.authstate.pw_dir);
-diff -rup dropbear-2013.58.orig/cli-auth.c dropbear-2013.58/cli-auth.c
---- dropbear-2013.58.orig/cli-auth.c     2013-07-03 14:57:58.000000000 +0200
-+++ dropbear-2013.58/cli-auth.c  2013-07-03 15:41:07.000000000 +0200
-@@ -339,7 +339,7 @@
-     }
- #endif
- 
--	password = getpass(prompt);
-+	//password = getpass(prompt);
- 
- 	/* 0x03 is a ctrl-c character in the buffer. */
- 	if (password == NULL || strchr(password, '\3') != NULL) {
