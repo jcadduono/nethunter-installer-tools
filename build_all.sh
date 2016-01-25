@@ -10,10 +10,10 @@ build_dropbear() {
 	autoconf && autoheader
 
 	# Check if patch already applied
-	patch -p0 -N --dry-run --silent < ../patches/dropbear.patch 2>/dev/null
+	patch -p1 -N --dry-run --silent < ../patches/dropbear.patch 2>/dev/null
 	if [ $? -eq 1 ]; then
 		#apply the patch
-		patch -p0 -N < ../patches/dropbear.patch
+		patch -p1 -N < ../patches/dropbear.patch
 	fi
 	
 	./configure --host=$HOST --disable-utmp --disable-wtmp --disable-utmpx --disable-utmpx --disable-zlib --disable-syslog --prefix=/data/local/nhsystem
