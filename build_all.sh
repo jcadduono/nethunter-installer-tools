@@ -74,6 +74,21 @@ copy_tcpdump(){
 	make clean
 }
 
+build_socat(){
+    cd $RDIR/socat-android
+    autoconf
+    autoheader
+    ./configure --host=$HOST --disable-openssl --disable-unix
+    sed 's/-lpthread//g' -i Makefile
+    make clean
+}
+
+copy_socat(){
+    mv $SYSROOT/usr/bin/socat $OUT
+    rm -f $SYSROOT/usr/bin/socat
+    make clean
+}
+
 build_hid_keyboard() {
 	echo "Building hid-keyboard..."
 	cd $RDIR/hid-keyboard
@@ -179,6 +194,7 @@ for arch in arm arm64 amd64; do
 	ARCH=$arch . $RDIR/android
 
 	build_dropbear
+    build_socat
 	build_nmap
 	build_tcpdump
 	build_hid_keyboard
@@ -191,6 +207,7 @@ for arch in arm arm64 amd64; do
 	build_screenres
 
 	copy_dropbear
+    copy_socat
 	copy_nmap
 	copy_tcpdump
 	copy_hid_keyboard

@@ -10,3 +10,6 @@
 [submodule "tcpdump"]
 	path = tcpdump
 	url = https://github.com/the-tcpdump-group/tcpdump.git
+[submodule "socat-android"]
+	path = socat-android
+	url = https://github.com/binkybear/socat-android.git
