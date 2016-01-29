@@ -21,7 +21,7 @@ arm64|aarch64)
 *)
 	export ARCH=arm
 	export HOST=arm-linux-androideabi
-	TOOLCHAIN="$BASEDIR/android-arm-4.9"
+	TOOLCHAIN="$BASEDIR/android-armhf-4.9"
 ;;
 esac
 
