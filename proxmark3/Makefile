@@ -36,7 +36,7 @@ client/cmdlfpcf7931.o
 TARGET := proxmark3
 
 override CFLAGS += \
--std=c99 -DCMIN=1 -DCTIME=0 \
+-std=gnu99 -DCMIN=1 -DCTIME=0 \
 -Iinclude \
 -Icommon \
 -Iclient \
