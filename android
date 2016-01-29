@@ -8,6 +8,11 @@ amd64|x86_64|x64)
 	export HOST=x86_64-linux-android
 	TOOLCHAIN="$BASEDIR/android-amd64-4.9"
 ;;
+x86|i386|i686)
+	export ARCH=x86
+	export HOST=i686-linux-android
+	TOOLCHAIN="$BASEDIR/android-i386-4.9"
+;;
 arm64|aarch64)
 	export ARCH=arm64
 	export HOST=aarch64-linux-android
