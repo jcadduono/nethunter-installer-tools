@@ -213,7 +213,7 @@ copy_screenres() {
 rm -rf $RDIR/out
 mkdir $RDIR/out
 
-for arch in arm arm64 amd64; do
+for arch in armhf arm64 amd64 i386; do
 	OUT=$RDIR/out/$arch
 	mkdir -p $OUT
 	ARCH=$arch . $RDIR/android
