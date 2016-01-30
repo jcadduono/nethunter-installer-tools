@@ -77,6 +77,9 @@ copy_nmap(){
 	make clean
     cd $RDIR/nmap
 	make clean
+	$STRIP /data/local/nhsystem/nmap7/bin/nmap
+	$STRIP /data/local/nhsystem/nmap7/bin/ncat
+	$STRIP /data/local/nhsystem/nmap7/bin/nping
 	cp -rf /data/local/nhsystem/nmap7/bin/* $OUT/
 
 	# Remove nmap/openssl (binaries are copied)
@@ -102,6 +105,7 @@ build_tcpdump(){
 
 copy_tcpdump(){
 	cd $RDIR/tcpdump
+	$STRIP $SYSROOT/usr/local/sbin/tcpdump
 	mv $SYSROOT/usr/local/sbin/tcpdump $OUT/
 	make clean
 }
