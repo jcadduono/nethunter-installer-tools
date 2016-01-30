@@ -67,7 +67,7 @@ build_nmap(){
 	LDFLAGS="-rdynamic -pie" ./configure --host=$HOST --without-ndiff --without-nmap-update --without-zenmap \
 	--with-liblua=included --with-libpcap=internal --with-pcap=linux --enable-static --prefix=/data/local/nhsystem/nmap7 \
 	--with-openssl=/data/local/nhsystem/openssl
-	
+
 	make
 	make install
 }
@@ -111,7 +111,7 @@ build_socat(){
     autoheader
     ./configure --host=$HOST --disable-openssl --disable-unix
     sed 's/-lpthread//g' -i Makefile
-    make clean
+    make clean all
 }
 
 copy_socat(){
