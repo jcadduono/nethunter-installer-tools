@@ -90,11 +90,12 @@ build_tcpdump(){
 	LDFLAGS=-static ./configure --host=$HOST --with-pcap=linux ac_cv_linux_vers=2
 	make
 	make install
+
 	echo "Building TCPDUMP"
 	cd $RDIR/tcpdump
 	sed -i".bak" "s/setprotoent/\/\/setprotoent/g" print-isakmp.c
 	sed -i".bak" "s/endprotoent/\/\/endprotoent/g" print-isakmp.c
-	./configure --host=$HOST --with-pcap=linux ac_cv_linux_vers=2 --with-crypto=no
+	./configure --host=$HOST ac_cv_linux_vers=2 --with-crypto=no
 	make
 	make install
 }

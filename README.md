@@ -1,6 +1,6 @@
 Some pre-requisite packages for building:
 ```sh
-apt-get install -y gcc build-essential libncurses5-dev libpam0g-dev libsepol1-dev libselinux1-dev make pkg-config autoconf
+apt-get install -y gcc build-essential libncurses5-dev libpam0g-dev libsepol1-dev libselinux1-dev make pkg-config autoconf flex bison
 ```
 
 If you haven't already, build the Android NDK standalone toolchains:
