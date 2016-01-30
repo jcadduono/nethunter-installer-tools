@@ -49,19 +49,25 @@ copy_busybox(){
 }
 
 build_nmap(){
+	# Build OPNESSL
 	cd $RDIR/openssl-1.0.2e
 	echo "Building openssl"
 	CC=$CC AR="$AR r" RANLIB=$RANLIB LDFLAGS="-static" ./Configure dist --prefix=/data/local/nhsystem/openssl
 	make clean
 	make CC=$CC AR="$AR r" RANLIB=$RANLIB LDFLAGS="-static"
 	make install
+
+	# Build nmap
 	echo "Building nmap"
 	cd $RDIR/nmap
-	LUA_CFLAGS="-DLUA_USE_POSIX -fvisibility=default -fPIE" ac_cv_linux_vers=2 CC=$CC LD=$LD CXX=$CXX \ 
-	AR=$AR RANLIB=$RANLIB STRIP=$CROSS_COMPILEstrip CFLAGS="-fvisibility=default -fPIE" CXXFLAGS="-fvisibility=default -fPIE" \ 
-	LDFLAGS="-rdynamic -pie" ./configure --host=$HOST --without-ndiff --without-nmap-update --without-zenmap \ 
-	--with-liblua=included --with-libpcap=internal --with-pcap=linux --enable-static --prefix=/data/local/nhsystem/nmap7 \ 
+
+	# Configuration options...there's a lot...
+	LUA_CFLAGS="-DLUA_USE_POSIX -fvisibility=default -fPIE" ac_cv_linux_vers=2 CC=$CC LD=$LD CXX=$CXX \
+	AR=$AR RANLIB=$RANLIB STRIP=$CROSS_COMPILEstrip CFLAGS="-fvisibility=default -fPIE" CXXFLAGS="-fvisibility=default -fPIE" \
+	LDFLAGS="-rdynamic -pie" ./configure --host=$HOST --without-ndiff --without-nmap-update --without-zenmap \
+	--with-liblua=included --with-libpcap=internal --with-pcap=linux --enable-static --prefix=/data/local/nhsystem/nmap7 \
 	--with-openssl=/data/local/nhsystem/openssl
+	
 	make
 	make install
 }
