@@ -29,6 +29,25 @@ copy_dropbear() {
 	make clean
 }
 
+build_busybox() {
+	cd $RDIR/busybox
+	# Check if patch already applied
+	patch -p1 -N --dry-run --silent < ../patches/busybox.patch 2>/dev/null
+	if [ $? -eq 1 ]; then
+		#apply the patch
+		patch -p1 -N < ../patches/busybox.patch
+	fi
+	cp ../patches/busybox_config .config
+	make CROSS_COMPILE=$CROSS_COMPILE "LDFLAGS=-static -fuse-ld=bfd"
+}
+
+copy_busybox(){
+	cd $RDIR/busybox
+	mv busybox $OUT/
+	mv busybox_unstripped $OUT/
+	make clean
+}
+
 build_nmap(){
 	cd $RDIR/openssl-1.0.2e
 	echo "Building openssl"
@@ -38,19 +57,25 @@ build_nmap(){
 	make install
 	echo "Building nmap"
 	cd $RDIR/nmap
-	LUA_CFLAGS="-DLUA_USE_POSIX -fvisibility=default -fPIE" ac_cv_linux_vers=2 CC=$CC LD=$LD CXX=$CXX AR=$AR RANLIB=$RANLIB STRIP=$CROSS_COMPILEstrip CFLAGS="-fvisibility=default -fPIE" CXXFLAGS="-fvisibility=default -fPIE" LDFLAGS="-rdynamic -pie" ./configure --host=$HOST --without-ndiff --without-nmap-update --without-zenmap --with-liblua=included --with-libpcap=internal --with-pcap=linux --enable-static --prefix=/data/local/nhsystem/nmap7 --with-openssl=/data/local/nhsystem/openssl
+	LUA_CFLAGS="-DLUA_USE_POSIX -fvisibility=default -fPIE" ac_cv_linux_vers=2 CC=$CC LD=$LD CXX=$CXX \ 
+	AR=$AR RANLIB=$RANLIB STRIP=$CROSS_COMPILEstrip CFLAGS="-fvisibility=default -fPIE" CXXFLAGS="-fvisibility=default -fPIE" \ 
+	LDFLAGS="-rdynamic -pie" ./configure --host=$HOST --without-ndiff --without-nmap-update --without-zenmap \ 
+	--with-liblua=included --with-libpcap=internal --with-pcap=linux --enable-static --prefix=/data/local/nhsystem/nmap7 \ 
+	--with-openssl=/data/local/nhsystem/openssl
 	make
 	make install
 }
 
 copy_nmap(){
-	cp -rf /data $OUT/
 	cd $RDIR/openssl-1.0.2e
 	make clean
     cd $RDIR/nmap
 	make clean
 	cp -rf /data/local/nhsystem/nmap7/bin/* $OUT/
+
+	# Remove nmap/openssl (binaries are copied)
 	rm -rf /data/local/nhsystem/nmap7
+	rm -rf /data/local/nhsystem/openssl
 }
 
 build_tcpdump(){
@@ -194,6 +219,7 @@ for arch in arm arm64 amd64; do
 	ARCH=$arch . $RDIR/android
 
 	build_dropbear
+	build_busybox
     build_socat
 	build_nmap
 	build_tcpdump
@@ -207,6 +233,7 @@ for arch in arm arm64 amd64; do
 	build_screenres
 
 	copy_dropbear
+	copy_busybox
     copy_socat
 	copy_nmap
 	copy_tcpdump
