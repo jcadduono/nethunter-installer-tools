@@ -109,7 +109,8 @@ build_socat(){
     cd $RDIR/socat-android
     autoconf
     autoheader
-    ./configure --host=$HOST --disable-openssl --disable-unix
+    mv $SYSROOT/usr/include/resolv.h $SYSROOT/usr/include/resolv.h.bak
+    ./configure --host=$HOST --disable-openssl --disable-unix ac_header_resolv_h=no ac_cv_c_compiler_gnu=yes ac_compiler_gnu=yes
     sed 's/-lpthread//g' -i Makefile
     make clean all
 }
