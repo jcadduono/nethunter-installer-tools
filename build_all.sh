@@ -9,20 +9,32 @@ else
 	PROJECTS="busybox hid_keyboard lz4 mkbootimg libreadline libtermcap libusb proxmark3 screenres"
 fi
 
+f_exists() {
+	type $1 > /dev/null 2>&1 || return 1
+}
+
 #unset static
 export STATIC=
 
-build_busybox() {
+setup_busybox() {
 	cd $RDIR/busybox
-	make clean
-	# Check if patch already applied
+	git reset --hard HEAD
+	git clean -xdf
+	# check if patch is applicable
 	patch -p1 -N --dry-run --silent < $RDIR/patches/busybox.patch 2>/dev/null
 	if [ $? -eq 1 ]; then
-		#apply the patch
+		# apply the patch
 		patch -p1 -N < $RDIR/patches/busybox.patch
+	else
+		echo "Can't patch busybox!"
+		exit 1
 	fi
 	cp $RDIR/patches/busybox_config .config
-	make
+}
+
+build_busybox() {
+	cd $RDIR/busybox
+	make clean all
 	$STRIP --strip-all busybox
 }
 
@@ -144,6 +156,11 @@ for arch in armhf arm64 amd64 i386; do
 	OUT=$RDIR/out/$arch
 	mkdir $OUT
 
+	# set up projects that need it
+	for project in $PROJECTS; do
+		f_exists setup_$project && setup_$project
+	done
+
 	# these should be compiled static (dynamic is not safe in recovery environment)
 	STATIC=1 ARCH=$arch . $RDIR/android
 
@@ -164,7 +181,7 @@ for arch in armhf arm64 amd64 i386; do
 
 	# copy all projects to out folder
 	for project in $PROJECTS; do
-		copy_$project
+		f_exists copy_$project && copy_$project
 	done
 done
 
