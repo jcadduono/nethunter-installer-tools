@@ -6,7 +6,7 @@ RDIR=$(pwd)
 if [ "$@" ]; then
 	PROJECTS=$@
 else
-	PROJECTS="busybox hid_keyboard lz4 mkbootimg libreadline libtermcap libusb proxmark3 screenres"
+	PROJECTS="busybox hid_keyboard lz4 mkbootimg libncurses libreadline libtermcap libusb proxmark3 screenres"
 fi
 
 f_exists() {
@@ -81,6 +81,26 @@ build_mkbootimg() {
 copy_mkbootimg() {
 	cd $RDIR/mkbootimg
 	mv mkbootimg unpackbootimg $OUT/
+	make clean
+}
+
+setup_libncurses() {
+	cd $RDIR/libncurses
+	git reset --hard HEAD
+	git clean -xdf
+	cp -f $RDIR/patches/libncurses_makefile Makefile
+}
+
+build_libncurses() {
+	echo "Building libncurses.so..."
+	cd $RDIR/libncurses
+	make clean all
+	$STRIP libncurses.so
+}
+
+copy_libncurses() {
+	cd $RDIR/libncurses
+	mv libncurses.so $OUT/
 	make clean
 }
 
@@ -175,7 +195,7 @@ for arch in armhf arm64 amd64 i386; do
 
 	for project in $PROJECTS; do
 		case $project in
-			libreadline|libtermcap|libusb|proxmark3|hid_keyboard) build_$project;;
+			libncurses|libreadline|libtermcap|libusb|proxmark3|hid_keyboard) build_$project;;
 		esac
 	done
 

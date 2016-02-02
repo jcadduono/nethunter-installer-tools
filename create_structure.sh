@@ -40,7 +40,7 @@ for arch in armhf arm64 amd64 i386; do
 	# update system/lib or /system/lib64
 	to=$ARCH_UPDATE/$arch/system/$lib
 	mkdir -p $to
-	cp $arch/libreadline.so $arch/libtermcap.so $arch/libusb.so $to/
+	cp $arch/libncurses.so $arch/libreadline.so $arch/libtermcap.so $arch/libusb.so $to/
 
 	# boot-patcher /sbin
 	to=$ARCH_BOOT/$arch/ramdisk-patch/sbin
