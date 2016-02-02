@@ -6,6 +6,7 @@ build_hid_keyboard() {
 	echo "Building hid-keyboard..."
 	cd $RDIR/hid-keyboard
 	make clean all
+	$STRIP --strip-all hid-keyboard
 }
 
 copy_hid_keyboard() {
@@ -18,6 +19,7 @@ build_lz4() {
 	echo "Building lz4..."
 	cd $RDIR/lz4
 	make clean all
+	$STRIP --strip-all lz4
 }
 
 copy_lz4() {
@@ -30,6 +32,8 @@ build_mkbootimg() {
 	echo "Building mkbootimg and unpackbootimg..."
 	cd $RDIR/mkbootimg
 	make clean all
+	$STRIP --strip-all mkbootimg
+	$STRIP --strip-all unpackbootimg
 }
 
 copy_mkbootimg() {
@@ -42,6 +46,7 @@ build_libreadline() {
 	echo "Building libreadline.so..."
 	cd $RDIR/libreadline
 	make clean all
+	$STRIP libreadline.so
 }
 
 copy_libreadline() {
@@ -54,6 +59,7 @@ build_libtermcap() {
 	echo "Building libtermcap.so..."
 	cd $RDIR/libtermcap
 	make clean all
+	$STRIP libtermcap.so
 }
 
 copy_libtermcap() {
@@ -66,6 +72,7 @@ build_libusb() {
 	echo "Building libusb.so..."
 	cd $RDIR/libusb
 	make clean all
+	$STRIP libusb.so
 }
 
 copy_libusb() {
@@ -78,6 +85,7 @@ build_proxmark3() {
 	echo "Building proxmark3..."
 	cd $RDIR/proxmark3
 	make clean all
+	$STRIP --strip-all proxmark3
 }
 
 copy_proxmark3() {
@@ -90,6 +98,7 @@ build_screenres() {
 	echo "Building screenres..."
 	cd $RDIR/screenres
 	make clean all
+	$STRIP --strip-all screenres
 }
 
 copy_screenres() {
