@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BASEDIR="$(readlink -f ~/build/toolchain)"
+BASEDIR="$(readlink -f $HOME/build/toolchain)"
 
 case "$ARCH" in
 amd64|x86_64|x64)
@@ -32,31 +32,53 @@ s) OPTIMIZE=-Os;;
 *) OPTIMIZE=-O2;;
 esac
 
-if [ "$TWRP" ]; then
-	LINKER="/sbin/linker"
+if [ "$STATIC" ]; then
+	LINKER="-static"
 else
-	LINKER="/system/bin/linker"
+	LINKER="-Wl,-dynamic-linker,"
+	if [ "$TWRP" ]; then
+		LINKER="$LINKER/sbin/linker"
+	else
+		LINKER="$LINKER/system/bin/linker"
+	fi
 fi
+
+export ANDROID_NDK="$HOME/build/ndk/android-ndk-r10e"
+export ANDROID_PREFIX="$ANDROID_NDK/prebuilt/android-$ARCH"
 
 export PATH="$PATH:$TOOLCHAIN/bin"
 export CROSS_COMPILE="$TOOLCHAIN/bin/$HOST-"
 export TARGET="$HOST"
-export CFLAGS="$OPTIMIZE -fomit-frame-pointer -fPIE"
-export CXXFLAGS="$CFLAGS"
-export LDFLAGS="-fPIE -pie -mandroid -mbionic -Wl,-dynamic-linker,$LINKER"
 export HOST_CC="gcc"
 export HOST_CXX="g++"
+export HOST_CPP="cpp"
+export HOST_AR="ar"
+export HOST_AS="as"
+export HOST_NM="nm"
+export HOST_LD="ld"
+export HOST_RANLIB="ranlib"
+export HOST_STRIP="strip"
 export CC="$CROSS_COMPILE$HOST_CC"
 export CXX="$CROSS_COMPILE$HOST_CXX"
+export CPP="$CROSS_COMPILE$HOST_CPP"
+export AR="$CROSS_COMPILE$HOST_AR"
+export AS="$CROSS_COMPILE$HOST_AS"
+export NM="$CROSS_COMPILE$HOST_NM"
+export LD="$CROSS_COMPILE$HOST_LD"
+export RANLIB="$CROSS_COMPILE$HOST_RANLIB"
+export STRIP="$CROSS_COMPILE$HOST_STRIP"
 export CROSS="$CROSS_COMPILE"
 export SYSROOT="$TOOLCHAIN/sysroot"
 export DESTDIR="$SYSROOT"
 export PREFIX="$DESTDIR/usr"
-export TARGET_FLAGS="--sysroot $SYSROOT $TARGET_CFLAGS"
+export CFLAGS="$OPTIMIZE -fomit-frame-pointer -fPIE --sysroot=\"${SYSROOT}\""
+export CXXFLAGS="$CFLAGS"
+export LDFLAGS="-fPIE -pie -mandroid -mbionic $LINKER"
 export TARGET_SYS="Linux"
 export TARGET_CFLAGS="$CFLAGS"
 export TARGET_CXXFLAGS="$CXXFLAGS"
 export TARGET_LDFLAGS="$LDFLAGS"
+export TARGET_FLAGS="$TARGET_CFLAGS"
 
 echo "Cross-compiling set up for $HOST"
 echo "CC: $CC"

@@ -33,3 +33,6 @@ If building for i386:
 
 You can set optimization levels too:  
 `O=3 source android`
+
+You can also force static compiled binaries:  
+`STATIC=1 source android`
