@@ -36,6 +36,8 @@ if [ "$STATIC" ]; then
 	LINKER="-static"
 else
 	LINKER="-Wl,-dynamic-linker,"
+	FPIE="-fPIE"
+	LDPIE="$FPIE -pie"
 	if [ "$TWRP" ]; then
 		LINKER="$LINKER/sbin/linker"
 	else
@@ -71,9 +73,9 @@ export CROSS="$CROSS_COMPILE"
 export SYSROOT="$TOOLCHAIN/sysroot"
 export DESTDIR="$SYSROOT"
 export PREFIX="$DESTDIR/usr"
-export CFLAGS="$OPTIMIZE -fomit-frame-pointer -fPIE --sysroot=\"${SYSROOT}\""
+export CFLAGS="$OPTIMIZE $FPIE -fomit-frame-pointer --sysroot=\"${SYSROOT}\""
 export CXXFLAGS="$CFLAGS"
-export LDFLAGS="-fPIE -pie -mandroid -mbionic $LINKER"
+export LDFLAGS="$LDPIE -mandroid -mbionic $LINKER"
 export TARGET_SYS="Linux"
 export TARGET_CFLAGS="$CFLAGS"
 export TARGET_CXXFLAGS="$CXXFLAGS"
