@@ -1,4 +1,4 @@
 [submodule "busybox"]
 	path = busybox
 	url = git://git.busybox.net/busybox
-	branch = 1_24_stable
+	branch = master
