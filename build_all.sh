@@ -2,6 +2,13 @@
 
 RDIR=$(pwd)
 
+# if $@, build and copy only that project
+if [ "$@" ]; then
+	PROJECTS=$@
+else
+	PROJECTS="busybox hid_keyboard lz4 mkbootimg libreadline libtermcap libusb proxmark3 screenres"
+fi
+
 #unset static
 export STATIC=
 
@@ -139,28 +146,26 @@ for arch in armhf arm64 amd64 i386; do
 
 	# these should be compiled static (dynamic is not safe in recovery environment)
 	STATIC=1 ARCH=$arch . $RDIR/android
-	build_busybox
-	build_lz4
-	build_mkbootimg
-	build_screenres
+
+	for project in $PROJECTS; do
+		case $project in
+			busybox|lz4|mkbootimg|screenres) build_$project;;
+		esac
+	done
 
 	# these should be compiled dynamic
 	ARCH=$arch . $RDIR/android
-	build_libreadline
-	build_libtermcap
-	build_libusb
-	build_proxmark3
-	build_hid_keyboard
 
-	copy_busybox
-	copy_hid_keyboard
-	copy_lz4
-	copy_mkbootimg
-	copy_libreadline
-	copy_libtermcap
-	copy_libusb
-	copy_proxmark3
-	copy_screenres
+	for project in $PROJECTS; do
+		case $project in
+			libreadline|libtermcap|libusb|proxmark3|hid_keyboard) build_$project;;
+		esac
+	done
+
+	# copy all projects to out folder
+	for project in $PROJECTS; do
+		copy_$project
+	done
 done
 
 echo "Done."
