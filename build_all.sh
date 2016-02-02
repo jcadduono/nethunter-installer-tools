@@ -5,6 +5,26 @@ RDIR=$(pwd)
 #unset static
 export STATIC=
 
+build_busybox() {
+	cd $RDIR/busybox
+	make clean
+	# Check if patch already applied
+	patch -p1 -N --dry-run --silent < $RDIR/patches/busybox.patch 2>/dev/null
+	if [ $? -eq 1 ]; then
+		#apply the patch
+		patch -p1 -N < $RDIR/patches/busybox.patch
+	fi
+	cp $RDIR/patches/busybox_config .config
+	make
+	$STRIP --strip-all busybox
+}
+
+copy_busybox() {
+	cd $RDIR/busybox
+	mv busybox $OUT/
+	make clean
+}
+
 build_hid_keyboard() {
 	echo "Building hid-keyboard..."
 	cd $RDIR/hid-keyboard
@@ -119,6 +139,7 @@ for arch in armhf arm64 amd64 i386; do
 
 	# these should be compiled static (dynamic is not safe in recovery environment)
 	STATIC=1 ARCH=$arch . $RDIR/android
+	build_busybox
 	build_lz4
 	build_mkbootimg
 	build_screenres
@@ -131,6 +152,7 @@ for arch in armhf arm64 amd64 i386; do
 	build_proxmark3
 	build_hid_keyboard
 
+	copy_busybox
 	copy_hid_keyboard
 	copy_lz4
 	copy_mkbootimg
