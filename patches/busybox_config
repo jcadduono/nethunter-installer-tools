@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Busybox version: 1.25.0.git
-# Fri Jan 29 22:25:12 2016
+# Mon Feb  1 20:49:50 2016
 #
 CONFIG_HAVE_DOT_CONFIG=y
 
@@ -753,7 +753,7 @@ CONFIG_MOUNTPOINT=y
 # CONFIG_RX is not set
 CONFIG_SETSID=y
 CONFIG_STRINGS=y
-CONFIG_TIME=y
+# CONFIG_TIME is not set
 # CONFIG_TIMEOUT is not set
 CONFIG_TTYSIZE=y
 # CONFIG_VOLNAME is not set
