@@ -16,6 +16,3 @@
 [submodule "busybox"]
 	path = busybox
 	url = git://busybox.net/busybox.git
-[submodule "mkbootimg"]
-	path = mkbootimg
-	url = https://github.com/osm0sis/mkbootimg.git
