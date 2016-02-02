@@ -2,6 +2,9 @@
 
 RDIR=$(pwd)
 
+#unset static
+export STATIC=
+
 build_hid_keyboard() {
 	echo "Building hid-keyboard..."
 	cd $RDIR/hid-keyboard
@@ -113,16 +116,20 @@ mkdir $RDIR/out
 for arch in armhf arm64 amd64 i386; do
 	OUT=$RDIR/out/$arch
 	mkdir $OUT
-	ARCH=$arch . $RDIR/android
 
-	build_hid_keyboard
+	# these should be compiled static (dynamic is not safe in recovery environment)
+	STATIC=1 ARCH=$arch . $RDIR/android
 	build_lz4
 	build_mkbootimg
+	build_screenres
+
+	# these should be compiled dynamic
+	ARCH=$arch . $RDIR/android
 	build_libreadline
 	build_libtermcap
 	build_libusb
 	build_proxmark3
-	build_screenres
+	build_hid_keyboard
 
 	copy_hid_keyboard
 	copy_lz4
