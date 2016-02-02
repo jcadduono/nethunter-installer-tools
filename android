@@ -34,6 +34,8 @@ esac
 
 if [ "$STATIC" ]; then
 	LINKER="-static"
+	FPIE=
+	LDPIE=
 else
 	LINKER="-Wl,-dynamic-linker,"
 	FPIE="-fPIE"
@@ -81,6 +83,14 @@ export TARGET_CFLAGS="$CFLAGS"
 export TARGET_CXXFLAGS="$CXXFLAGS"
 export TARGET_LDFLAGS="$LDFLAGS"
 export TARGET_FLAGS="$TARGET_CFLAGS"
+
+# some things should not be sourced
+unset BASEDIR
+unset LINKER
+unset TOOLCHAIN
+unset PIE
+unset LDPIE
+unset O
 
 echo "Cross-compiling set up for $HOST"
 echo "CC: $CC"
