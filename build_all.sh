@@ -153,12 +153,12 @@ copy_lz4() {
 build_mkbootimg() {
 	echo "Building mkbootimg and unpackbootimg..."
 	cd $RDIR/mkbootimg
-	make clean static
+	make clean all CROSS_COMPILE=$CROSS_COMPILE "LDFLAGS=-static"
 }
 
 copy_mkbootimg() {
 	cd $RDIR/mkbootimg
-	mv mkbootimg-static unpackbootimg-static $OUT/
+	mv mkbootimg unpackbootimg $OUT/
 	make clean
 }
 
