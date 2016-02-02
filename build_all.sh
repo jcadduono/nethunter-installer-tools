@@ -21,10 +21,10 @@ setup_busybox() {
 	git reset --hard HEAD
 	git clean -xdf
 	# check if patch is applicable
-	patch -p1 -N --dry-run --silent < $RDIR/patches/busybox.patch 2>/dev/null
-	if [ $? -eq 1 ]; then
+	patch -p1 -N --dry-run --silent < $RDIR/patches/busybox.diff 2>/dev/null
+	if [ $? -eq 0 ]; then
 		# apply the patch
-		patch -p1 -N < $RDIR/patches/busybox.patch
+		patch -p1 -N < $RDIR/patches/busybox.diff
 	else
 		echo "Can't patch busybox!"
 		exit 1
