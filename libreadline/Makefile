@@ -36,7 +36,8 @@ TARGET := libreadline.so
 
 override CFLAGS += -I. -fPIC -DHAVE_CONFIG_H -DRL_LIBRARY_VERSION='"6.2"'
 
-override LDFLAGS += -shared
+override LDFLAGS += -shared \
+-L../libncurses -lncurses
 
 all: $(TARGET)
 

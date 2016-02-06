@@ -11,7 +11,8 @@ override CFLAGS += -I. -fPIC \
 -DSTDC_HEADERS=1 \
 -DTERMCAP_FILE=\"/etc/termcap\"
 
-override LDFLAGS += -shared
+override LDFLAGS += -shared \
+-L../libncurses -lncurses
 
 all: $(TARGET)
 
