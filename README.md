@@ -13,6 +13,13 @@ build/tools/make-standalone-toolchain.sh --platform=android-21 --toolchain=x86_6
 build/tools/make-standalone-toolchain.sh --platform=android-21 --toolchain=x86-4.9 --install-dir="$HOME/build/toolchain/android-i386-4.9"
 ```
 
+To properly set up this repository, you must use git clone --recursive.  
+Alternatively, use git submodule update inside the repository after cloning.
+```sh
+cd ~/build
+git clone --recursive https://github.com/jcadduono/nethunter-installer-tools.git
+```
+
 Use ./android through source, ex.  
 `source ./android`
 
