@@ -3,8 +3,8 @@
 RDIR=$(pwd)
 
 # if $@, build and copy only that project
-if [ "$@" ]; then
-	PROJECTS=$@
+if [ "$1" ]; then
+	PROJECTS="$*"
 else
 	PROJECTS="busybox hid_keyboard lz4 mkbootimg libncurses libreadline libtermcap libusb proxmark3 screenres"
 fi
