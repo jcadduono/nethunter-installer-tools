@@ -6,7 +6,7 @@ RDIR=$(pwd)
 if [ "$1" ]; then
 	PROJECTS="$*"
 else
-	PROJECTS="busybox hid_keyboard lz4 mkbootimg libncurses libreadline libtermcap libusb proxmark3 screenres"
+	PROJECTS="busybox hid_keyboard lz4 mkbootimg libncurses libreadline libtermcap libusb proxmark3 screenres dosfstools"
 fi
 
 f_exists() {
@@ -169,6 +169,19 @@ copy_screenres() {
 	make clean
 }
 
+build_dosfstools() {
+	echo "Building dosfstools..."
+	cd $RDIR/dosfstools
+	make clean mkfs.fat
+	$STRIP --strip-all mkfs.fat
+}
+
+copy_dosfstools() {
+	cd $RDIR/dosfstools
+	mv mkfs.fat $OUT/
+	make clean
+}
+
 rm -rf $RDIR/out
 mkdir $RDIR/out
 
@@ -195,7 +208,7 @@ for arch in armhf arm64 amd64 i386; do
 
 	for project in $PROJECTS; do
 		case $project in
-			libncurses|libreadline|libtermcap|libusb|proxmark3|hid_keyboard) build_$project;;
+			libncurses|libreadline|libtermcap|libusb|proxmark3|hid_keyboard|dosfstools) build_$project;;
 		esac
 	done
 

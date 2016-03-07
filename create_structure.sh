@@ -35,7 +35,7 @@ for arch in armhf arm64 amd64 i386; do
 	# update system/bin
 	to=$ARCH_UPDATE/$arch/system/bin
 	mkdir -p $to
-	cp $arch/proxmark3 $to/
+	cp $arch/proxmark3 $arch/mkfs.fat $to/
 
 	# update system/lib or /system/lib64
 	to=$ARCH_UPDATE/$arch/system/$lib
