@@ -34,7 +34,7 @@ setup_busybox() {
 
 build_busybox() {
 	cd $RDIR/busybox
-	make clean all
+	make clean all EXTRAVERSION=-NetHunter
 	$STRIP --strip-all busybox
 }
 

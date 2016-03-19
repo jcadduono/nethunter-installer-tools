@@ -30,6 +30,19 @@ index 23ac00e..423b4f8 100644
  	char *tempString = tempBuffer;
  	int width;
  
+diff --git a/coreutils/cksum.c b/coreutils/cksum.c
+index ac0b0c3..e2bf0d9 100644
+--- a/coreutils/cksum.c
++++ b/coreutils/cksum.c
+@@ -21,7 +21,7 @@ int cksum_main(int argc UNUSED_PARAM, char **argv)
+ {
+ 	uint32_t *crc32_table = crc32_filltable(NULL, 1);
+ 	uint32_t crc;
+-	off_t length, filesize;
++	loff_t length, filesize;
+ 	int bytes_read;
+ 	int exit_code = EXIT_SUCCESS;
+ 
 diff --git a/coreutils/dd.c b/coreutils/dd.c
 index 0c0ea07..37224e3 100644
 --- a/coreutils/dd.c
@@ -293,7 +306,7 @@ index 10969b5..1873ea7 100644
  	gid_t gid;
  	mode_t mode;
 diff --git a/include/libbb.h b/include/libbb.h
-index d05ac29..dd38a22 100644
+index 8b226c0..15fa71e 100644
 --- a/include/libbb.h
 +++ b/include/libbb.h
 @@ -65,6 +65,16 @@
@@ -313,7 +326,16 @@ index d05ac29..dd38a22 100644
  #endif
  #ifdef HAVE_MNTENT_H
  # include <mntent.h>
-@@ -277,12 +287,6 @@ typedef unsigned long uoff_t;
+@@ -81,8 +91,6 @@
+ #if ENABLE_SELINUX
+ # include <selinux/selinux.h>
+ # include <selinux/context.h>
+-# include <selinux/flask.h>
+-# include <selinux/av_permissions.h>
+ #endif
+ #if ENABLE_FEATURE_UTMP
+ # if defined __UCLIBC__ && ( \
+@@ -281,12 +289,6 @@ typedef unsigned long uoff_t;
  #endif
  /* scary. better ideas? (but do *test* them first!) */
  #define OFF_T_MAX  ((off_t)~((off_t)1 << (sizeof(off_t)*8-1)))
@@ -326,7 +348,7 @@ index d05ac29..dd38a22 100644
  
  /* Some useful definitions */
  #undef FALSE
-@@ -394,12 +398,12 @@ extern int get_console_fd_or_die(void) FAST_FUNC;
+@@ -398,12 +400,12 @@ extern int get_console_fd_or_die(void) FAST_FUNC;
  extern void console_make_active(int fd, const int vt_num) FAST_FUNC;
  extern char *find_block_device(const char *path) FAST_FUNC;
  /* bb_copyfd_XX print read/write errors and return -1 if they occur */
@@ -343,7 +365,7 @@ index d05ac29..dd38a22 100644
  
  extern char bb_process_escape_sequence(const char **ptr) FAST_FUNC;
  char* strcpy_and_process_escape_sequences(char *dst, const char *src) FAST_FUNC;
-@@ -513,9 +517,9 @@ int open_or_warn_stdin(const char *pathname) FAST_FUNC;
+@@ -517,9 +519,9 @@ int open_or_warn_stdin(const char *pathname) FAST_FUNC;
  int xopen_stdin(const char *pathname) FAST_FUNC;
  void xrename(const char *oldpath, const char *newpath) FAST_FUNC;
  int rename_or_warn(const char *oldpath, const char *newpath) FAST_FUNC;
@@ -355,7 +377,7 @@ index d05ac29..dd38a22 100644
  
  uoff_t FAST_FUNC get_volume_size_in_bytes(int fd,
  		const char *override,
-@@ -1844,7 +1848,7 @@ extern struct globals *const ptr_to_globals;
+@@ -1848,7 +1850,7 @@ extern struct globals *const ptr_to_globals;
   * use bb_default_login_shell and following defines.
   * If you change LIBBB_DEFAULT_LOGIN_SHELL,
   * don't forget to change increment constant. */
@@ -829,6 +851,133 @@ index 9f50182..7315239 100644
  	FILE *file;
  	char *string;
  	const char *fmt = "%s: ";
+diff --git a/miscutils/time.c b/miscutils/time.c
+index 19b0b44..ca6bd0f 100644
+--- a/miscutils/time.c
++++ b/miscutils/time.c
+@@ -30,6 +30,13 @@ typedef struct {
+ 
+ #define UL unsigned long
+ 
++#ifdef __ANDROID__
++static pid_t wait3(int* status, int options, struct rusage* rusage)
++{
++	return wait4(-1, status, options, rusage);
++}
++#endif
++
+ static const char default_format[] ALIGN1 = "real\t%E\nuser\t%u\nsys\t%T";
+ 
+ /* The output format for the -p option .*/
+diff --git a/networking/ifconfig.c b/networking/ifconfig.c
+index 8984b02..d5a8513 100644
+--- a/networking/ifconfig.c
++++ b/networking/ifconfig.c
+@@ -79,11 +79,13 @@
+ #endif
+ 
+ #if ENABLE_FEATURE_IPV6
++# ifndef __ANDROID__
+ struct in6_ifreq {
+ 	struct in6_addr ifr6_addr;
+ 	uint32_t ifr6_prefixlen;
+ 	int ifr6_ifindex;
+ };
++#  endif
+ #endif
+ 
+ /*
+diff --git a/networking/interface.c b/networking/interface.c
+index e5723b4..2b7c6f8 100644
+--- a/networking/interface.c
++++ b/networking/interface.c
+@@ -56,6 +56,7 @@
+ 
+ #ifdef HAVE_AFINET6
+ # ifndef _LINUX_IN6_H
++#  ifndef __ANDROID__
+ /*
+  * This is from linux/include/net/ipv6.h
+  */
+@@ -64,6 +65,7 @@ struct in6_ifreq {
+ 	uint32_t ifr6_prefixlen;
+ 	unsigned int ifr6_ifindex;
+ };
++#  endif
+ # endif
+ #endif /* HAVE_AFINET6 */
+ 
+diff --git a/networking/tftp.c b/networking/tftp.c
+index ad9308e..a091ac2 100644
+--- a/networking/tftp.c
++++ b/networking/tftp.c
+@@ -122,8 +122,8 @@ struct globals {
+ 	char block_buf[516];
+ 	char block_buf_tail[1];
+ #if ENABLE_FEATURE_TFTP_PROGRESS_BAR
+-	off_t pos;
+-	off_t size;
++	loff_t pos;
++	loff_t size;
+ 	const char *file;
+ 	bb_progress_t pmt;
+ #endif
+@@ -391,7 +391,7 @@ static int tftp_protocol(
+ 			goto send_pkt;
+ 
+ 		/* Need to add option to pkt */
+-		if ((&xbuf[io_bufsize - 1] - cp) < sizeof("blksize NNNNN tsize ") + sizeof(off_t)*3) {
++		if ((&xbuf[io_bufsize - 1] - cp) < sizeof("blksize NNNNN tsize ") + sizeof(loff_t)*3) {
+ 			bb_error_msg("remote filename is too long");
+ 			goto ret;
+ 		}
+@@ -419,7 +419,7 @@ static int tftp_protocol(
+ 			cp += sizeof("tsize");
+ 			st.st_size = 0;
+ 			fstat(local_fd, &st);
+-			cp += sprintf(cp, "%"OFF_FMT"u", (off_t)st.st_size) + 1;
++			cp += sprintf(cp, "%"OFF_FMT"u", (loff_t)st.st_size) + 1;
+ # if ENABLE_FEATURE_TFTP_PROGRESS_BAR
+ 			/* Save for progress bar. If 0 (tftp downloading),
+ 			 * we look at server's reply later */
+diff --git a/networking/wget.c b/networking/wget.c
+index 5c12423..c6db365 100644
+--- a/networking/wget.c
++++ b/networking/wget.c
+@@ -185,10 +185,10 @@ static const char wget_user_headers[] ALIGN1 =
+ 
+ /* Globals */
+ struct globals {
+-	off_t content_len;        /* Content-length of the file */
+-	off_t beg_range;          /* Range at which continue begins */
++	loff_t content_len;        /* Content-length of the file */
++	loff_t beg_range;          /* Range at which continue begins */
+ #if ENABLE_FEATURE_WGET_STATUSBAR
+-	off_t transferred;        /* Number of bytes transferred so far */
++	loff_t transferred;        /* Number of bytes transferred so far */
+ 	const char *curfile;      /* Name of current file being transferred */
+ 	bb_progress_t pmt;
+ #endif
+@@ -770,7 +770,7 @@ static void NOINLINE retrieve_file_data(FILE *dfp)
+ 			errno = 0;
+ 			rdsz = sizeof(G.wget_buf);
+ 			if (G.got_clen) {
+-				if (G.content_len < (off_t)sizeof(G.wget_buf)) {
++				if (G.content_len < (loff_t)sizeof(G.wget_buf)) {
+ 					if ((int)G.content_len <= 0)
+ 						break;
+ 					rdsz = (unsigned)G.content_len;
+@@ -862,8 +862,8 @@ static void NOINLINE retrieve_file_data(FILE *dfp)
+ 	 * failed to restart *without* losing the almost complete file.
+ 	 */
+ 	{
+-		off_t pos = lseek(G.output_fd, 0, SEEK_CUR);
+-		if (pos != (off_t)-1)
++		loff_t pos = lseek(G.output_fd, 0, SEEK_CUR);
++		if (pos != (loff_t)-1)
+ 			ftruncate(G.output_fd, pos);
+ 	}
+ 
 diff --git a/shell/ash.c b/shell/ash.c
 index b5a2d96..1d9ba4a 100644
 --- a/shell/ash.c

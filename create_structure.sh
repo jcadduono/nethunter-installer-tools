@@ -22,11 +22,6 @@ for arch in armhf arm64 amd64 i386; do
 		*) lib=lib;;
 	esac
 
-	# common tools
-	to=$ARCH_COMMON/$arch/tools
-	mkdir -p $to
-	cp $arch/busybox $to/
-
 	# update tools
 	to=$ARCH_UPDATE/$arch/tools
 	mkdir -p $to
