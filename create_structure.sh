@@ -50,7 +50,7 @@ for arch in armhf arm64 amd64 i386; do
 	# boot-patcher tools
 	to=$ARCH_BOOT/$arch/tools
 	mkdir -p $to
-	cp $arch/lz4 $arch/mkbootimg $arch/unpackbootimg $to/
+	cp $arch/lz4 $arch/mkbootimg $arch/unpackbootimg $arch/flash_image $to/
 done
 
 echo "Done."

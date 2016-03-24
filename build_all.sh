@@ -6,7 +6,7 @@ RDIR=$(pwd)
 if [ "$1" ]; then
 	PROJECTS="$*"
 else
-	PROJECTS="busybox hid_keyboard lz4 mkbootimg libncurses libreadline libtermcap libusb proxmark3 screenres"
+	PROJECTS="busybox hid_keyboard lz4 mkbootimg libncurses libreadline libtermcap libusb proxmark3 screenres flash_image"
 fi
 
 f_exists() {
@@ -169,6 +169,19 @@ copy_screenres() {
 	make clean
 }
 
+build_flash_image() {
+	echo "Building flash_image..."
+	cd $RDIR/flash_image
+	make clean all
+	$STRIP --strip-all flash_image
+}
+
+copy_flash_image() {
+	cd $RDIR/flash_image
+	mv flash_image $OUT/
+	make clean
+}
+
 rm -rf $RDIR/out
 mkdir $RDIR/out
 
@@ -186,7 +199,7 @@ for arch in armhf arm64 amd64 i386; do
 
 	for project in $PROJECTS; do
 		case $project in
-			busybox|lz4|mkbootimg|screenres) build_$project;;
+			busybox|lz4|mkbootimg|screenres|flash_image) build_$project;;
 		esac
 	done
 
