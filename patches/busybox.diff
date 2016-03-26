@@ -1,3 +1,65 @@
+diff --git a/archival/ar.c b/archival/ar.c
+index e49d5cb..7600a48 100644
+--- a/archival/ar.c
++++ b/archival/ar.c
+@@ -98,7 +98,7 @@ static void output_ar_header(archive_handle_t *handle)
+ 	}
+ 
+ 	/* Careful! The widths should be exact. Fields must be separated */
+-	if (sizeof(off_t) > 4 && fh->size > (off_t)MAX10CHARS) {
++	if (sizeof(loff_t) > 4 && fh->size > (loff_t)MAX10CHARS) {
+ 		bb_error_msg_and_die("'%s' is bigger than ar can handle", fh->name);
+ 	}
+ 	fdprintf(handle->src_fd, "%-16.16s%-12lu%-6u%-6u%-8o%-10"OFF_FMT"u`\n",
+diff --git a/archival/cpio.c b/archival/cpio.c
+index 82b3fe5..850ec22 100644
+--- a/archival/cpio.c
++++ b/archival/cpio.c
+@@ -178,7 +178,7 @@ void BUG_cpio_globals_too_big(void);
+ } while (0)
+ 
+ #if ENABLE_FEATURE_CPIO_O
+-static off_t cpio_pad4(off_t size)
++static loff_t cpio_pad4(loff_t size)
+ {
+ 	int i;
+ 
+@@ -204,7 +204,7 @@ static NOINLINE int cpio_o(void)
+ 	};
+ 
+ 	struct inodes_s *links = NULL;
+-	off_t bytes = 0; /* output bytes count */
++	loff_t bytes = 0; /* output bytes count */
+ 
+ 	while (1) {
+ 		const char *name;
+@@ -502,11 +502,11 @@ int cpio_main(int argc UNUSED_PARAM, char **argv)
+ 	}
+ 
+ 	/* see get_header_cpio */
+-	archive_handle->cpio__blocks = (off_t)-1;
++	archive_handle->cpio__blocks = (loff_t)-1;
+ 	while (get_header_cpio(archive_handle) == EXIT_SUCCESS)
+ 		continue;
+ 
+-	if (archive_handle->cpio__blocks != (off_t)-1
++	if (archive_handle->cpio__blocks != (loff_t)-1
+ 	 && !(opt & OPT_QUIET)
+ 	) {
+ 		fprintf(stderr, "%"OFF_FMT"u blocks\n", archive_handle->cpio__blocks);
+diff --git a/archival/libarchive/data_extract_all.c b/archival/libarchive/data_extract_all.c
+index bd034af..62e83ae 100644
+--- a/archival/libarchive/data_extract_all.c
++++ b/archival/libarchive/data_extract_all.c
+@@ -244,4 +244,8 @@ void FAST_FUNC data_extract_all(archive_handle_t *archive_handle)
+ 		setfscreatecon(NULL);
+ 	}
+ #endif
++	if (archive_handle->ah_flags & ARCHIVE_SHOW_PROGRESS) {
++		fflush(stdout);
++		fprintf(stdout, "%"OFF_FMT"u\r", archive_handle->offset);
++	}
+ }
 diff --git a/archival/libarchive/get_header_tar.c b/archival/libarchive/get_header_tar.c
 index ac2be72..57e6eed 100644
 --- a/archival/libarchive/get_header_tar.c
@@ -14,8 +76,38 @@ index ac2be72..57e6eed 100644
  		archive_handle->offset += sz;
  		sz >>= 9; /* sz /= 512 but w/o contortions for signed div */
  		while (sz--)
+diff --git a/archival/libarchive/seek_by_jump.c b/archival/libarchive/seek_by_jump.c
+index 4fcd99a..17fab50 100644
+--- a/archival/libarchive/seek_by_jump.c
++++ b/archival/libarchive/seek_by_jump.c
+@@ -6,10 +6,10 @@
+ #include "libbb.h"
+ #include "bb_archive.h"
+ 
+-void FAST_FUNC seek_by_jump(int fd, off_t amount)
++void FAST_FUNC seek_by_jump(int fd, loff_t amount)
+ {
+ 	if (amount
+-	 && lseek(fd, amount, SEEK_CUR) == (off_t) -1
++	 && lseek(fd, amount, SEEK_CUR) == (loff_t) -1
+ 	) {
+ 		if (errno == ESPIPE)
+ 			seek_by_read(fd, amount);
+diff --git a/archival/libarchive/seek_by_read.c b/archival/libarchive/seek_by_read.c
+index c0fde96..38c943d 100644
+--- a/archival/libarchive/seek_by_read.c
++++ b/archival/libarchive/seek_by_read.c
+@@ -9,7 +9,7 @@
+ /*  If we are reading through a pipe, or from stdin then we can't lseek,
+  *  we must read and discard the data to skip over it.
+  */
+-void FAST_FUNC seek_by_read(int fd, off_t amount)
++void FAST_FUNC seek_by_read(int fd, loff_t amount)
+ {
+ 	if (amount)
+ 		bb_copyfd_exact_size(fd, -1, amount);
 diff --git a/archival/tar.c b/archival/tar.c
-index 23ac00e..423b4f8 100644
+index 23ac00e..7f01533 100644
 --- a/archival/tar.c
 +++ b/archival/tar.c
 @@ -259,9 +259,9 @@ static HardLinkInfo *findHardLinkInfo(HardLinkInfo *hlInfo, struct stat *statbuf
@@ -30,6 +122,112 @@ index 23ac00e..423b4f8 100644
  	char *tempString = tempBuffer;
  	int width;
  
+@@ -799,6 +799,7 @@ static llist_t *append_file_list_to_list(llist_t *list)
+ //usage:     "\n	f	Name of TARFILE ('-' for stdin/out)"
+ //usage:     "\n	C	Change to DIR before operation"
+ //usage:     "\n	v	Verbose"
++//usage:     "\n	P	Print progress in bytes"
+ //usage:	IF_FEATURE_SEAMLESS_Z(
+ //usage:     "\n	Z	(De)compress using compress"
+ //usage:	)
+@@ -846,7 +847,7 @@ static llist_t *append_file_list_to_list(llist_t *list)
+ //)
+ 
+ enum {
+-	OPTBIT_KEEP_OLD = 8,
++	OPTBIT_KEEP_OLD = 9,
+ 	IF_FEATURE_TAR_CREATE(   OPTBIT_CREATE      ,)
+ 	IF_FEATURE_TAR_CREATE(   OPTBIT_DEREFERENCE ,)
+ 	IF_FEATURE_SEAMLESS_BZ2( OPTBIT_BZIP2       ,)
+@@ -873,7 +874,8 @@ enum {
+ 	OPT_NOPRESERVE_OWNER = 1 << 5, // o == no-same-owner
+ 	OPT_P            = 1 << 6, // p
+ 	OPT_VERBOSE      = 1 << 7, // v
+-	OPT_KEEP_OLD     = 1 << 8, // k
++	OPT_PROGRESS     = 1 << 8, // P
++	OPT_KEEP_OLD     = 1 << 9, // k
+ 	OPT_CREATE       = IF_FEATURE_TAR_CREATE(   (1 << OPTBIT_CREATE      )) + 0, // c
+ 	OPT_DEREFERENCE  = IF_FEATURE_TAR_CREATE(   (1 << OPTBIT_DEREFERENCE )) + 0, // h
+ 	OPT_BZIP2        = IF_FEATURE_SEAMLESS_BZ2( (1 << OPTBIT_BZIP2       )) + 0, // j
+@@ -906,6 +908,7 @@ static const char tar_longopts[] ALIGN1 =
+ 	"no-same-owner\0"       No_argument       "o"
+ 	"same-permissions\0"    No_argument       "p"
+ 	"verbose\0"             No_argument       "v"
++	"progress\0"            No_argument       "P"
+ 	"keep-old\0"            No_argument       "k"
+ # if ENABLE_FEATURE_TAR_CREATE
+ 	"create\0"              No_argument       "c"
+@@ -1028,7 +1031,7 @@ int tar_main(int argc UNUSED_PARAM, char **argv)
+ 	}
+ #endif
+ 	opt = getopt32(argv,
+-		"txC:f:Oopvk"
++		"txC:f:OopvPk"
+ 		IF_FEATURE_TAR_CREATE(   "ch"  )
+ 		IF_FEATURE_SEAMLESS_BZ2( "j"   )
+ 		IF_FEATURE_SEAMLESS_LZMA("a"   )
+@@ -1063,6 +1066,7 @@ int tar_main(int argc UNUSED_PARAM, char **argv)
+ 	showopt(OPT_NOPRESERVE_OWNER);
+ 	showopt(OPT_P               );
+ 	showopt(OPT_VERBOSE         );
++	showopt(OPT_PROGRESS        );
+ 	showopt(OPT_KEEP_OLD        );
+ 	showopt(OPT_CREATE          );
+ 	showopt(OPT_DEREFERENCE     );
+@@ -1109,6 +1113,9 @@ int tar_main(int argc UNUSED_PARAM, char **argv)
+ 		IF_FEATURE_TAR_TO_COMMAND(tar_handle->tar__to_command_shell = xstrdup(get_shell_name());)
+ 	}
+ 
++	if (opt & OPT_PROGRESS)
++		tar_handle->ah_flags |= ARCHIVE_SHOW_PROGRESS;
++
+ 	if (opt & OPT_KEEP_OLD)
+ 		tar_handle->ah_flags &= ~ARCHIVE_UNLINK_OLD;
+ 
+diff --git a/archival/unzip.c b/archival/unzip.c
+index f41ab6f..a650dc3 100644
+--- a/archival/unzip.c
++++ b/archival/unzip.c
+@@ -191,7 +191,7 @@ static uint32_t find_cdf_offset(void)
+ {
+ 	cde_header_t cde_header;
+ 	unsigned char *p;
+-	off_t end;
++	loff_t end;
+ 	unsigned char *buf = xzalloc(PEEK_FROM_END);
+ 
+ 	end = xlseek(zip_fd, 0, SEEK_END);
+@@ -232,7 +232,7 @@ static uint32_t find_cdf_offset(void)
+ 
+ static uint32_t read_next_cdf(uint32_t cdf_offset, cdf_header_t *cdf_ptr)
+ {
+-	off_t org;
++	loff_t org;
+ 
+ 	org = xlseek(zip_fd, 0, SEEK_CUR);
+ 
+@@ -254,10 +254,10 @@ static uint32_t read_next_cdf(uint32_t cdf_offset, cdf_header_t *cdf_ptr)
+ };
+ #endif
+ 
+-static void unzip_skip(off_t skip)
++static void unzip_skip(loff_t skip)
+ {
+ 	if (skip != 0)
+-		if (lseek(zip_fd, skip, SEEK_CUR) == (off_t)-1)
++		if (lseek(zip_fd, skip, SEEK_CUR) == (loff_t)-1)
+ 			bb_copyfd_exact_size(zip_fd, -1, skip);
+ }
+ 
+@@ -275,7 +275,7 @@ static void unzip_extract(zip_header_t *zip_header, int dst_fd)
+ {
+ 	if (zip_header->formatted.method == 0) {
+ 		/* Method 0 - stored (not compressed) */
+-		off_t size = zip_header->formatted.ucmpsize;
++		loff_t size = zip_header->formatted.ucmpsize;
+ 		if (size)
+ 			bb_copyfd_exact_size(zip_fd, dst_fd, size);
+ 	} else {
 diff --git a/coreutils/cksum.c b/coreutils/cksum.c
 index ac0b0c3..e2bf0d9 100644
 --- a/coreutils/cksum.c
@@ -293,7 +491,7 @@ index a4af6f4..29e7a81 100644
  	const char *fmt;
  	int c1, c2;
 diff --git a/include/bb_archive.h b/include/bb_archive.h
-index 10969b5..1873ea7 100644
+index 10969b5..b1f8a4d 100644
 --- a/include/bb_archive.h
 +++ b/include/bb_archive.h
 @@ -35,7 +35,7 @@ typedef struct file_header_t {
@@ -305,6 +503,49 @@ index 10969b5..1873ea7 100644
  	uid_t uid;
  	gid_t gid;
  	mode_t mode;
+@@ -71,10 +71,10 @@ typedef struct archive_handle_t {
+ 	void FAST_FUNC (*action_data)(struct archive_handle_t *);
+ 
+ 	/* Function that skips data */
+-	void FAST_FUNC (*seek)(int fd, off_t amount);
++	void FAST_FUNC (*seek)(int fd, loff_t amount);
+ 
+ 	/* Count processed bytes */
+-	off_t offset;
++	loff_t offset;
+ 
+ 	/* Archiver specific. Can make it a union if it ever gets big */
+ #if ENABLE_FEATURE_TAR_LONG_OPTIONS
+@@ -129,6 +129,7 @@ typedef struct archive_handle_t {
+ #if ENABLE_RPM
+ #define ARCHIVE_REPLACE_VIA_RENAME  (1 << 10)
+ #endif
++#define ARCHIVE_SHOW_PROGRESS       (1 << 11)
+ 
+ 
+ /* POSIX tar Header Block, from POSIX 1003.1-1990  */
+@@ -192,8 +193,8 @@ char get_header_tar_bz2(archive_handle_t *archive_handle) FAST_FUNC;
+ char get_header_tar_lzma(archive_handle_t *archive_handle) FAST_FUNC;
+ char get_header_tar_xz(archive_handle_t *archive_handle) FAST_FUNC;
+ 
+-void seek_by_jump(int fd, off_t amount) FAST_FUNC;
+-void seek_by_read(int fd, off_t amount) FAST_FUNC;
++void seek_by_jump(int fd, loff_t amount) FAST_FUNC;
++void seek_by_read(int fd, loff_t amount) FAST_FUNC;
+ 
+ const char *strip_unsafe_prefix(const char *str) FAST_FUNC;
+ 
+@@ -224,8 +225,8 @@ typedef struct transformer_state_t {
+ 	size_t   mem_output_size;
+ 	char     *mem_output_buf;
+ 
+-	off_t    bytes_out;
+-	off_t    bytes_in;  /* used in unzip code only: needs to know packed size */
++	loff_t    bytes_out;
++	loff_t    bytes_in;  /* used in unzip code only: needs to know packed size */
+ 	uint32_t crc32;
+ 	time_t   mtime;     /* gunzip code may set this on exit */
+ } transformer_state_t;
 diff --git a/include/libbb.h b/include/libbb.h
 index 8b226c0..15fa71e 100644
 --- a/include/libbb.h
@@ -870,7 +1111,7 @@ index 19b0b44..ca6bd0f 100644
  
  /* The output format for the -p option .*/
 diff --git a/networking/ifconfig.c b/networking/ifconfig.c
-index 8984b02..d5a8513 100644
+index 8984b02..61c98d3 100644
 --- a/networking/ifconfig.c
 +++ b/networking/ifconfig.c
 @@ -79,11 +79,13 @@
@@ -883,12 +1124,12 @@ index 8984b02..d5a8513 100644
  	uint32_t ifr6_prefixlen;
  	int ifr6_ifindex;
  };
-+#  endif
++# endif
  #endif
  
  /*
 diff --git a/networking/interface.c b/networking/interface.c
-index e5723b4..2b7c6f8 100644
+index e5723b4..8b117cd 100644
 --- a/networking/interface.c
 +++ b/networking/interface.c
 @@ -56,6 +56,7 @@
@@ -899,14 +1140,14 @@ index e5723b4..2b7c6f8 100644
  /*
   * This is from linux/include/net/ipv6.h
   */
-@@ -64,6 +65,7 @@ struct in6_ifreq {
- 	uint32_t ifr6_prefixlen;
+@@ -65,6 +66,7 @@ struct in6_ifreq {
  	unsigned int ifr6_ifindex;
  };
-+#  endif
  # endif
++# endif
  #endif /* HAVE_AFINET6 */
  
+ /* Defines for glibc2.0 users. */
 diff --git a/networking/tftp.c b/networking/tftp.c
 index ad9308e..a091ac2 100644
 --- a/networking/tftp.c
@@ -979,10 +1220,10 @@ index 5c12423..c6db365 100644
  	}
  
 diff --git a/shell/ash.c b/shell/ash.c
-index b5a2d96..1d9ba4a 100644
+index 5613e1f..dc5c225 100644
 --- a/shell/ash.c
 +++ b/shell/ash.c
-@@ -13125,6 +13125,7 @@ int ash_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
+@@ -13127,6 +13127,7 @@ int ash_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
  int ash_main(int argc UNUSED_PARAM, char **argv)
  {
  	const char *shinit;
@@ -990,7 +1231,7 @@ index b5a2d96..1d9ba4a 100644
  	volatile smallint state;
  	struct jmploc jmploc;
  	struct stackmark smark;
-@@ -13185,22 +13186,13 @@ int ash_main(int argc UNUSED_PARAM, char **argv)
+@@ -13187,22 +13188,14 @@ int ash_main(int argc UNUSED_PARAM, char **argv)
  	setstackmark(&smark);
  	procargs(argv);
  
@@ -998,10 +1239,10 @@ index b5a2d96..1d9ba4a 100644
 -		isloginsh = 1;
 -	if (isloginsh) {
 -		const char *hp;
--
++	isloginsh = 1;
+ 
 -		state = 1;
 -		read_profile("/etc/profile");
-+	isloginsh = 1;
 +	state = 1;
 +	read_profile("/system/etc/profile");
   state1:
@@ -1019,7 +1260,7 @@ index b5a2d96..1d9ba4a 100644
   state2:
  	state = 3;
  	if (
-@@ -13230,15 +13222,10 @@ int ash_main(int argc UNUSED_PARAM, char **argv)
+@@ -13232,15 +13225,10 @@ int ash_main(int argc UNUSED_PARAM, char **argv)
  	if (sflag || minusc == NULL) {
  #if MAX_HISTORY > 0 && ENABLE_FEATURE_EDITING_SAVEHISTORY
  		if (iflag) {
