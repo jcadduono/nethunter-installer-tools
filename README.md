@@ -43,3 +43,9 @@ You can set optimization levels too:
 
 You can also force static compiled binaries:  
 `STATIC=1 source android`
+
+If you would like to build specific projects for each arch with the standard settings, you can use (by itself):  
+`./build_all.sh [project_name1] [project_name2]`
+
+To arrange the build output binaries into the same structure used in the Kali NetHunter installer git for easy copy/paste:  
+`./create_structure.sh`
