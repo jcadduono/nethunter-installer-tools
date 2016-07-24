@@ -6,3 +6,6 @@
 	path = libncurses
 	url = https://github.com/CyanogenMod/android_external_libncurses.git
 	branch = cm-13.0
+[submodule "lxc"]
+	path = lxc
+	url = https://github.com/binkybear/platform_external_lxc.git
