@@ -212,7 +212,6 @@ build_lxc(){
 copy_lxc(){
 	cd $RDIR/lxc
 	mv lxc $OUT
-	cp -rf src/lxc/lxc/* $OUT/lxc
 	make clean
 }
 
