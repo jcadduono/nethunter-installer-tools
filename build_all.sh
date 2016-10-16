@@ -6,7 +6,7 @@ RDIR=$(pwd)
 if [ "$1" ]; then
 	PROJECTS="$*"
 else
-	PROJECTS="busybox hid_keyboard lz4 mkbootimg libncurses libreadline libtermcap libusb proxmark3 screenres flash_image lxc"
+	PROJECTS="busybox hid_keyboard lz4 mkbootimg libncurses libreadline libtermcap libusb proxmark3 screenres flash_image"
 fi
 
 f_exists() {
@@ -182,13 +182,11 @@ copy_flash_image() {
 	make clean
 }
 
-build_lxc(){
+buld_lxc(){
 	echo "Building LXC"
 	cd $RDIR/lxc
-	chmod +x *.sh
-	./autogen.sh
-	mkdir -p lxc
-	cp -rf config lxc
+	mkdir -p out 
+	cp -rf config out
 	CFLAGS="-nostdlib -Bdynamic -pie"
 	LDFLAGS="-Wl,-dynamic-linker,/system/bin/linker -ldl -lc -L"/root/build/ndk/android-ndk-r10e/platforms/android-21/arch-arm/usr/lib" -lgcc"
 	./configure \
@@ -206,12 +204,12 @@ build_lxc(){
 	--with-runtime-path=/cache/ \
 	--with-config-path=/data/local/nhsystem/containers/
 	make
-	make DESTDIR=lxc install
+	make DESTDIR=out install
 }
 
 copy_lxc(){
 	cd $RDIR/lxc
-	mv lxc $OUT
+	mv out $OUT
 	make clean
 }
 
