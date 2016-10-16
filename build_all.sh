@@ -182,37 +182,6 @@ copy_flash_image() {
 	make clean
 }
 
-buld_lxc(){
-	echo "Building LXC"
-	cd $RDIR/lxc
-	mkdir -p out 
-	cp -rf config out
-	CFLAGS="-nostdlib -Bdynamic -pie"
-	LDFLAGS="-Wl,-dynamic-linker,/system/bin/linker -ldl -lc -L"/root/build/ndk/android-ndk-r10e/platforms/android-21/arch-arm/usr/lib" -lgcc"
-	./configure \
-	--host=arm-linux-androideabi \
-	--bindir="/system/bin" \
-	--libdir="/system/lib" \
-	--disable-api-docs \
-	--disable-capabilities \
-	--disable-examples \
-	--disable-lua \
-	--disable-python \
-	--disable-bash \
-	--enable-configpath-log \
-	--prefix=/data/local/nhsystem/lxc \
-	--with-runtime-path=/cache/ \
-	--with-config-path=/data/local/nhsystem/containers/
-	make
-	make DESTDIR=out install
-}
-
-copy_lxc(){
-	cd $RDIR/lxc
-	mv out $OUT
-	make clean
-}
-
 rm -rf $RDIR/out
 mkdir $RDIR/out
 
@@ -239,7 +208,7 @@ for arch in armhf arm64 amd64 i386; do
 
 	for project in $PROJECTS; do
 		case $project in
-			libncurses|libreadline|libtermcap|libusb|proxmark3|hid_keyboard|lxc) build_$project;;
+			libncurses|libreadline|libtermcap|libusb|proxmark3|hid_keyboard) build_$project;;
 		esac
 	done
 
