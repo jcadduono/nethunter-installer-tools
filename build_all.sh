@@ -1,6 +1,8 @@
 #!/bin/bash
 
 RDIR=$(pwd)
+PREFIXDIR='/data/local/nhsystem'
+
 git submodule init
 git submodule update
 
@@ -16,7 +18,7 @@ build_dropbear() {
 		patch -p1 -N < ../patches/dropbear.patch
 	fi
 	
-	./configure --host=$HOST --disable-utmp --disable-wtmp --disable-utmpx --disable-utmpx --disable-zlib --disable-syslog --prefix=/data/local/nhsystem
+	./configure --host=$HOST --disable-utmp --disable-wtmp --disable-utmpx --disable-utmpx --disable-zlib --disable-syslog --prefix=$PREFIXDIR
     make clean all
 }
 
@@ -52,7 +54,7 @@ build_nmap(){
 	# Build OPNESSL
 	cd $RDIR/openssl-1.0.2e
 	echo "Building openssl"
-	CC=$CC AR="$AR r" RANLIB=$RANLIB LDFLAGS="-static" ./Configure dist --prefix=/data/local/nhsystem/openssl
+	CC=$CC AR="$AR r" RANLIB=$RANLIB LDFLAGS="-static" ./Configure dist --prefix=$PREFIXDIR/openssl
 	make clean
 	make CC=$CC AR="$AR r" RANLIB=$RANLIB LDFLAGS="-static"
 	make install
@@ -65,8 +67,8 @@ build_nmap(){
 	LUA_CFLAGS="-DLUA_USE_POSIX -fvisibility=default -fPIE" ac_cv_linux_vers=2 CC=$CC LD=$LD CXX=$CXX \
 	AR=$AR RANLIB=$RANLIB STRIP=$CROSS_COMPILEstrip CFLAGS="-fvisibility=default -fPIE" CXXFLAGS="-fvisibility=default -fPIE" \
 	LDFLAGS="-rdynamic -pie" ./configure --host=$HOST --without-ndiff --without-nmap-update --without-zenmap \
-	--with-liblua=included --with-libpcap=internal --with-pcap=linux --enable-static --prefix=/data/local/nhsystem/nmap7 \
-	--with-openssl=/data/local/nhsystem/openssl
+	--with-liblua=included --with-libpcap=internal --with-pcap=linux --enable-static --prefix=$PREFIXDIR/nmap7 \
+	--with-openssl=$PREFIXDIR/openssl
 
 	make
 	make install
@@ -77,14 +79,14 @@ copy_nmap(){
 	make clean
     cd $RDIR/nmap
 	make clean
-	$STRIP /data/local/nhsystem/nmap7/bin/nmap
-	$STRIP /data/local/nhsystem/nmap7/bin/ncat
-	$STRIP /data/local/nhsystem/nmap7/bin/nping
-	cp -rf /data/local/nhsystem/nmap7/bin/* $OUT/
+	$STRIP $PREFIXDIR/nmap7/bin/nmap
+	$STRIP $PREFIXDIR/nmap7/bin/ncat
+	$STRIP $PREFIXDIR/nmap7/bin/nping
+	cp -rf $PREFIXDIR/nmap7/bin/* $OUT/
 
 	# Remove nmap/openssl (binaries are copied)
-	rm -rf /data/local/nhsystem/nmap7
-	rm -rf /data/local/nhsystem/openssl
+	rm -rf $PREFIXDIR/nmap7
+	rm -rf $PREFIXDIR/openssl
 }
 
 build_tcpdump(){
