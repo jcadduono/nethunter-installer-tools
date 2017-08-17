@@ -1,0 +1,36 @@
+SRC_FILES := \
+$(wildcard ncurses/tty/*.c) \
+$(wildcard ncurses/base/*.c) \
+$(wildcard ncurses/tinfo/*.c) \
+ncurses/trace/lib_trace.c \
+ncurses/trace/varargs.c \
+ncurses/trace/visbuf.c \
+ncurses/codes.c \
+ncurses/comp_captab.c \
+ncurses/expanded.c \
+ncurses/fallback.c \
+ncurses/lib_gen.c \
+ncurses/lib_keyname.c \
+ncurses/names.c \
+ncurses/unctrl.c
+
+SRC_FILES := \
+$(filter-out ncurses/base/lib_driver.c ncurses/base/sigaction.c ncurses/tinfo/doalloc.c ncurses/tinfo/make_keys.c ncurses/tinfo/tinfo_driver.c, $(SRC_FILES))
+
+OBJ_FILES := $(SRC_FILES:.c=.o)
+
+TARGET := libncurses.so
+
+override CFLAGS += \
+-I. -Iinclude -Incurses \
+-DHAVE_CONFIG_H -U_XOPEN_SOURCE -D_XOPEN_SOURCE=500 -U_POSIX_C_SOURCE -D_POSIX_C_SOURCE=199506L -DNDEBUG \
+
+override LDFLAGS += -shared
+
+all: $(TARGET)
+
+$(TARGET): $(OBJ_FILES)
+	$(CC) $(LDFLAGS) $^ -o $@
+
+clean:
+	$(RM) $(OBJ_FILES) $(TARGET)

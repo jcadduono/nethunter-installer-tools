@@ -16,3 +16,7 @@
 [submodule "busybox"]
 	path = busybox
 	url = git://busybox.net/busybox.git
+	branch = master
+[submodule "libncurses"]
+	path = libncurses
+	url = https://github.com/CyanogenMod/android_external_libncurses.git

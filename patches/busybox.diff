@@ -1,0 +1,1294 @@
+diff --git a/archival/ar.c b/archival/ar.c
+index e49d5cb..7600a48 100644
+--- a/archival/ar.c
++++ b/archival/ar.c
+@@ -98,7 +98,7 @@ static void output_ar_header(archive_handle_t *handle)
+ 	}
+ 
+ 	/* Careful! The widths should be exact. Fields must be separated */
+-	if (sizeof(off_t) > 4 && fh->size > (off_t)MAX10CHARS) {
++	if (sizeof(loff_t) > 4 && fh->size > (loff_t)MAX10CHARS) {
+ 		bb_error_msg_and_die("'%s' is bigger than ar can handle", fh->name);
+ 	}
+ 	fdprintf(handle->src_fd, "%-16.16s%-12lu%-6u%-6u%-8o%-10"OFF_FMT"u`\n",
+diff --git a/archival/cpio.c b/archival/cpio.c
+index 82b3fe5..850ec22 100644
+--- a/archival/cpio.c
++++ b/archival/cpio.c
+@@ -178,7 +178,7 @@ void BUG_cpio_globals_too_big(void);
+ } while (0)
+ 
+ #if ENABLE_FEATURE_CPIO_O
+-static off_t cpio_pad4(off_t size)
++static loff_t cpio_pad4(loff_t size)
+ {
+ 	int i;
+ 
+@@ -204,7 +204,7 @@ static NOINLINE int cpio_o(void)
+ 	};
+ 
+ 	struct inodes_s *links = NULL;
+-	off_t bytes = 0; /* output bytes count */
++	loff_t bytes = 0; /* output bytes count */
+ 
+ 	while (1) {
+ 		const char *name;
+@@ -502,11 +502,11 @@ int cpio_main(int argc UNUSED_PARAM, char **argv)
+ 	}
+ 
+ 	/* see get_header_cpio */
+-	archive_handle->cpio__blocks = (off_t)-1;
++	archive_handle->cpio__blocks = (loff_t)-1;
+ 	while (get_header_cpio(archive_handle) == EXIT_SUCCESS)
+ 		continue;
+ 
+-	if (archive_handle->cpio__blocks != (off_t)-1
++	if (archive_handle->cpio__blocks != (loff_t)-1
+ 	 && !(opt & OPT_QUIET)
+ 	) {
+ 		fprintf(stderr, "%"OFF_FMT"u blocks\n", archive_handle->cpio__blocks);
+diff --git a/archival/libarchive/data_extract_all.c b/archival/libarchive/data_extract_all.c
+index bd034af..62e83ae 100644
+--- a/archival/libarchive/data_extract_all.c
++++ b/archival/libarchive/data_extract_all.c
+@@ -244,4 +244,8 @@ void FAST_FUNC data_extract_all(archive_handle_t *archive_handle)
+ 		setfscreatecon(NULL);
+ 	}
+ #endif
++	if (archive_handle->ah_flags & ARCHIVE_SHOW_PROGRESS) {
++		fflush(stdout);
++		fprintf(stdout, "%"OFF_FMT"u\r", archive_handle->offset);
++	}
+ }
+diff --git a/archival/libarchive/get_header_tar.c b/archival/libarchive/get_header_tar.c
+index ac2be72..57e6eed 100644
+--- a/archival/libarchive/get_header_tar.c
++++ b/archival/libarchive/get_header_tar.c
+@@ -391,9 +391,9 @@ char FAST_FUNC get_header_tar(archive_handle_t *archive_handle)
+ 	}
+  skip_ext_hdr:
+ 	{
+-		off_t sz;
++		loff_t sz;
+ 		bb_error_msg("warning: skipping header '%c'", tar.typeflag);
+-		sz = (file_header->size + 511) & ~(off_t)511;
++		sz = (file_header->size + 511) & ~(loff_t)511;
+ 		archive_handle->offset += sz;
+ 		sz >>= 9; /* sz /= 512 but w/o contortions for signed div */
+ 		while (sz--)
+diff --git a/archival/libarchive/seek_by_jump.c b/archival/libarchive/seek_by_jump.c
+index 4fcd99a..17fab50 100644
+--- a/archival/libarchive/seek_by_jump.c
++++ b/archival/libarchive/seek_by_jump.c
+@@ -6,10 +6,10 @@
+ #include "libbb.h"
+ #include "bb_archive.h"
+ 
+-void FAST_FUNC seek_by_jump(int fd, off_t amount)
++void FAST_FUNC seek_by_jump(int fd, loff_t amount)
+ {
+ 	if (amount
+-	 && lseek(fd, amount, SEEK_CUR) == (off_t) -1
++	 && lseek(fd, amount, SEEK_CUR) == (loff_t) -1
+ 	) {
+ 		if (errno == ESPIPE)
+ 			seek_by_read(fd, amount);
+diff --git a/archival/libarchive/seek_by_read.c b/archival/libarchive/seek_by_read.c
+index c0fde96..38c943d 100644
+--- a/archival/libarchive/seek_by_read.c
++++ b/archival/libarchive/seek_by_read.c
+@@ -9,7 +9,7 @@
+ /*  If we are reading through a pipe, or from stdin then we can't lseek,
+  *  we must read and discard the data to skip over it.
+  */
+-void FAST_FUNC seek_by_read(int fd, off_t amount)
++void FAST_FUNC seek_by_read(int fd, loff_t amount)
+ {
+ 	if (amount)
+ 		bb_copyfd_exact_size(fd, -1, amount);
+diff --git a/archival/tar.c b/archival/tar.c
+index 23ac00e..7f01533 100644
+--- a/archival/tar.c
++++ b/archival/tar.c
+@@ -259,9 +259,9 @@ static HardLinkInfo *findHardLinkInfo(HardLinkInfo *hlInfo, struct stat *statbuf
+ /* Put an octal string into the specified buffer.
+  * The number is zero padded and possibly null terminated.
+  * Stores low-order bits only if whole value does not fit. */
+-static void putOctal(char *cp, int len, off_t value)
++static void putOctal(char *cp, int len, loff_t value)
+ {
+-	char tempBuffer[sizeof(off_t)*3 + 1];
++	char tempBuffer[sizeof(loff_t)*3 + 1];
+ 	char *tempString = tempBuffer;
+ 	int width;
+ 
+@@ -799,6 +799,7 @@ static llist_t *append_file_list_to_list(llist_t *list)
+ //usage:     "\n	f	Name of TARFILE ('-' for stdin/out)"
+ //usage:     "\n	C	Change to DIR before operation"
+ //usage:     "\n	v	Verbose"
++//usage:     "\n	P	Print progress in bytes"
+ //usage:	IF_FEATURE_SEAMLESS_Z(
+ //usage:     "\n	Z	(De)compress using compress"
+ //usage:	)
+@@ -846,7 +847,7 @@ static llist_t *append_file_list_to_list(llist_t *list)
+ //)
+ 
+ enum {
+-	OPTBIT_KEEP_OLD = 8,
++	OPTBIT_KEEP_OLD = 9,
+ 	IF_FEATURE_TAR_CREATE(   OPTBIT_CREATE      ,)
+ 	IF_FEATURE_TAR_CREATE(   OPTBIT_DEREFERENCE ,)
+ 	IF_FEATURE_SEAMLESS_BZ2( OPTBIT_BZIP2       ,)
+@@ -873,7 +874,8 @@ enum {
+ 	OPT_NOPRESERVE_OWNER = 1 << 5, // o == no-same-owner
+ 	OPT_P            = 1 << 6, // p
+ 	OPT_VERBOSE      = 1 << 7, // v
+-	OPT_KEEP_OLD     = 1 << 8, // k
++	OPT_PROGRESS     = 1 << 8, // P
++	OPT_KEEP_OLD     = 1 << 9, // k
+ 	OPT_CREATE       = IF_FEATURE_TAR_CREATE(   (1 << OPTBIT_CREATE      )) + 0, // c
+ 	OPT_DEREFERENCE  = IF_FEATURE_TAR_CREATE(   (1 << OPTBIT_DEREFERENCE )) + 0, // h
+ 	OPT_BZIP2        = IF_FEATURE_SEAMLESS_BZ2( (1 << OPTBIT_BZIP2       )) + 0, // j
+@@ -906,6 +908,7 @@ static const char tar_longopts[] ALIGN1 =
+ 	"no-same-owner\0"       No_argument       "o"
+ 	"same-permissions\0"    No_argument       "p"
+ 	"verbose\0"             No_argument       "v"
++	"progress\0"            No_argument       "P"
+ 	"keep-old\0"            No_argument       "k"
+ # if ENABLE_FEATURE_TAR_CREATE
+ 	"create\0"              No_argument       "c"
+@@ -1028,7 +1031,7 @@ int tar_main(int argc UNUSED_PARAM, char **argv)
+ 	}
+ #endif
+ 	opt = getopt32(argv,
+-		"txC:f:Oopvk"
++		"txC:f:OopvPk"
+ 		IF_FEATURE_TAR_CREATE(   "ch"  )
+ 		IF_FEATURE_SEAMLESS_BZ2( "j"   )
+ 		IF_FEATURE_SEAMLESS_LZMA("a"   )
+@@ -1063,6 +1066,7 @@ int tar_main(int argc UNUSED_PARAM, char **argv)
+ 	showopt(OPT_NOPRESERVE_OWNER);
+ 	showopt(OPT_P               );
+ 	showopt(OPT_VERBOSE         );
++	showopt(OPT_PROGRESS        );
+ 	showopt(OPT_KEEP_OLD        );
+ 	showopt(OPT_CREATE          );
+ 	showopt(OPT_DEREFERENCE     );
+@@ -1109,6 +1113,9 @@ int tar_main(int argc UNUSED_PARAM, char **argv)
+ 		IF_FEATURE_TAR_TO_COMMAND(tar_handle->tar__to_command_shell = xstrdup(get_shell_name());)
+ 	}
+ 
++	if (opt & OPT_PROGRESS)
++		tar_handle->ah_flags |= ARCHIVE_SHOW_PROGRESS;
++
+ 	if (opt & OPT_KEEP_OLD)
+ 		tar_handle->ah_flags &= ~ARCHIVE_UNLINK_OLD;
+ 
+diff --git a/archival/unzip.c b/archival/unzip.c
+index f41ab6f..a650dc3 100644
+--- a/archival/unzip.c
++++ b/archival/unzip.c
+@@ -191,7 +191,7 @@ static uint32_t find_cdf_offset(void)
+ {
+ 	cde_header_t cde_header;
+ 	unsigned char *p;
+-	off_t end;
++	loff_t end;
+ 	unsigned char *buf = xzalloc(PEEK_FROM_END);
+ 
+ 	end = xlseek(zip_fd, 0, SEEK_END);
+@@ -232,7 +232,7 @@ static uint32_t find_cdf_offset(void)
+ 
+ static uint32_t read_next_cdf(uint32_t cdf_offset, cdf_header_t *cdf_ptr)
+ {
+-	off_t org;
++	loff_t org;
+ 
+ 	org = xlseek(zip_fd, 0, SEEK_CUR);
+ 
+@@ -254,10 +254,10 @@ static uint32_t read_next_cdf(uint32_t cdf_offset, cdf_header_t *cdf_ptr)
+ };
+ #endif
+ 
+-static void unzip_skip(off_t skip)
++static void unzip_skip(loff_t skip)
+ {
+ 	if (skip != 0)
+-		if (lseek(zip_fd, skip, SEEK_CUR) == (off_t)-1)
++		if (lseek(zip_fd, skip, SEEK_CUR) == (loff_t)-1)
+ 			bb_copyfd_exact_size(zip_fd, -1, skip);
+ }
+ 
+@@ -275,7 +275,7 @@ static void unzip_extract(zip_header_t *zip_header, int dst_fd)
+ {
+ 	if (zip_header->formatted.method == 0) {
+ 		/* Method 0 - stored (not compressed) */
+-		off_t size = zip_header->formatted.ucmpsize;
++		loff_t size = zip_header->formatted.ucmpsize;
+ 		if (size)
+ 			bb_copyfd_exact_size(zip_fd, dst_fd, size);
+ 	} else {
+diff --git a/coreutils/cksum.c b/coreutils/cksum.c
+index ac0b0c3..e2bf0d9 100644
+--- a/coreutils/cksum.c
++++ b/coreutils/cksum.c
+@@ -21,7 +21,7 @@ int cksum_main(int argc UNUSED_PARAM, char **argv)
+ {
+ 	uint32_t *crc32_table = crc32_filltable(NULL, 1);
+ 	uint32_t crc;
+-	off_t length, filesize;
++	loff_t length, filesize;
+ 	int bytes_read;
+ 	int exit_code = EXIT_SUCCESS;
+ 
+diff --git a/coreutils/dd.c b/coreutils/dd.c
+index 0c0ea07..37224e3 100644
+--- a/coreutils/dd.c
++++ b/coreutils/dd.c
+@@ -90,6 +90,10 @@
+ //usage:       "4+0 records in\n"
+ //usage:       "4+0 records out\n"
+ 
++#ifndef _LARGEFILE64_SOURCE
++/* For lseek64 */
++# define _LARGEFILE64_SOURCE
++#endif
+ #include "libbb.h"
+ 
+ /* This is a NOEXEC applet. Be very careful! */
+@@ -101,7 +105,7 @@ enum {
+ };
+ 
+ struct globals {
+-	off_t out_full, out_part, in_full, in_part;
++	loff_t out_full, out_part, in_full, in_part;
+ #if ENABLE_FEATURE_DD_THIRD_STATUS_LINE
+ 	unsigned long long total_bytes;
+ 	unsigned long long begin_time_us;
+@@ -304,8 +308,8 @@ int dd_main(int argc UNUSED_PARAM, char **argv)
+ 	struct {
+ 		size_t oc;
+ 		ssize_t prev_read_size; /* for detecting swab failure */
+-		off_t count;
+-		off_t seek, skip;
++		loff_t count;
++		loff_t seek, skip;
+ 		const char *infile, *outfile;
+ 	} Z;
+ #define oc      (Z.oc     )
+@@ -445,7 +449,7 @@ int dd_main(int argc UNUSED_PARAM, char **argv)
+ 	}
+ 	if (skip) {
+ 		size_t blocksz = (G.flags & FLAG_SKIP_BYTES) ? 1 : ibs;
+-		if (lseek(ifd, skip * blocksz, SEEK_CUR) < 0) {
++		if (lseek64(ifd, skip * blocksz, SEEK_CUR) < 0) {
+ 			do {
+ 				ssize_t n = safe_read(ifd, ibuf, blocksz);
+ 				if (n < 0)
+@@ -456,7 +460,7 @@ int dd_main(int argc UNUSED_PARAM, char **argv)
+ 		}
+ 	}
+ 	if (seek) {
+-		if (lseek(ofd, seek * obs, SEEK_CUR) < 0)
++		if (lseek64(ofd, seek * obs, SEEK_CUR) < 0)
+ 			goto die_outfile;
+ 	}
+ 
+diff --git a/coreutils/ls.c b/coreutils/ls.c
+index 20bd618..244b2ec 100644
+--- a/coreutils/ls.c
++++ b/coreutils/ls.c
+@@ -328,7 +328,7 @@ struct dnode {
+ //
+ 	/* Same names as in struct stat, but with dn_ instead of st_ pfx: */
+ 	mode_t    dn_mode; /* obtained with lstat OR stat, depending on -L etc */
+-	off_t     dn_size;
++	loff_t     dn_size;
+ #if ENABLE_FEATURE_LS_TIMESTAMPS || ENABLE_FEATURE_LS_SORTFILES
+ 	time_t    dn_atime;
+ 	time_t    dn_mtime;
+@@ -522,7 +522,7 @@ static NOINLINE unsigned display_single(const struct dnode *dn)
+ 		column += printf("%7llu ", (long long) dn->dn_ino);
+ //TODO: -h should affect -s too:
+ 	if (G.all_fmt & LIST_BLOCKS)
+-		column += printf("%6"OFF_FMT"u ", (off_t) (dn->dn_blocks >> 1));
++		column += printf("%6"OFF_FMT"u ", (loff_t) (dn->dn_blocks >> 1));
+ 	if (G.all_fmt & LIST_MODEBITS)
+ 		column += printf("%-10s ", (char *) bb_mode_string(dn->dn_mode));
+ 	if (G.all_fmt & LIST_NLINKS)
+@@ -1003,7 +1003,7 @@ static struct dnode **scan_one_dir(const char *path, unsigned *nfiles_p)
+  * number of units.
+  */
+ /* by Jorgen Overgaard (jorgen AT antistaten.se) */
+-static off_t calculate_blocks(struct dnode **dn)
++static loff_t calculate_blocks(struct dnode **dn)
+ {
+ 	uoff_t blocks = 1;
+ 	if (dn) {
+diff --git a/coreutils/od_bloaty.c b/coreutils/od_bloaty.c
+index f47f84b..079d9ea 100644
+--- a/coreutils/od_bloaty.c
++++ b/coreutils/od_bloaty.c
+@@ -185,12 +185,12 @@ struct globals {
+ 
+ 	/* Function that accepts an address and an optional following char,
+ 	   and prints the address and char to stdout.  */
+-	void (*format_address)(off_t, char);
++	void (*format_address)(loff_t, char);
+ 
+ 	/* The difference between the old-style pseudo starting address and
+ 	   the number of bytes to skip.  */
+ #if ENABLE_LONG_OPTS
+-	off_t pseudo_offset;
++	loff_t pseudo_offset;
+ # define G_pseudo_offset G.pseudo_offset
+ #endif
+ 	/* When zero, MAX_BYTES_TO_FORMAT and END_OFFSET are ignored, and all
+@@ -772,7 +772,7 @@ decode_format_string(const char *s)
+    advance IN_STREAM.  */
+ 
+ static void
+-skip(off_t n_skip)
++skip(loff_t n_skip)
+ {
+ 	if (n_skip == 0)
+ 		return;
+@@ -834,10 +834,10 @@ skip(off_t n_skip)
+ }
+ 
+ 
+-typedef void FN_format_address(off_t address, char c);
++typedef void FN_format_address(loff_t address, char c);
+ 
+ static void
+-format_address_none(off_t address UNUSED_PARAM, char c UNUSED_PARAM)
++format_address_none(loff_t address UNUSED_PARAM, char c UNUSED_PARAM)
+ {
+ }
+ 
+@@ -848,7 +848,7 @@ static char address_fmt[] ALIGN1 = "%0n"OFF_FMT"xc";
+ #define address_pad_len_char address_fmt[2]
+ 
+ static void
+-format_address_std(off_t address, char c)
++format_address_std(loff_t address, char c)
+ {
+ 	/* Corresponds to 'c' */
+ 	address_fmt[sizeof(address_fmt)-2] = c;
+@@ -858,7 +858,7 @@ format_address_std(off_t address, char c)
+ #if ENABLE_LONG_OPTS
+ /* only used with --traditional */
+ static void
+-format_address_paren(off_t address, char c)
++format_address_paren(loff_t address, char c)
+ {
+ 	putchar('(');
+ 	format_address_std(address, ')');
+@@ -866,7 +866,7 @@ format_address_paren(off_t address, char c)
+ }
+ 
+ static void
+-format_address_label(off_t address, char c)
++format_address_label(loff_t address, char c)
+ {
+ 	format_address_std(address, ' ');
+ 	format_address_paren(address + G_pseudo_offset, c);
+@@ -897,7 +897,7 @@ dump_hexl_mode_trailer(size_t n_bytes, const char *block)
+    only when it has not been padded to length BYTES_PER_BLOCK.  */
+ 
+ static void
+-write_block(off_t current_offset, size_t n_bytes,
++write_block(loff_t current_offset, size_t n_bytes,
+ 		const char *prev_block, const char *curr_block)
+ {
+ 	unsigned i;
+@@ -986,7 +986,7 @@ get_lcm(void)
+    read.  */
+ 
+ static void
+-dump(off_t current_offset, off_t end_offset)
++dump(loff_t current_offset, loff_t end_offset)
+ {
+ 	char *block[2];
+ 	int idx;
+@@ -1003,7 +1003,7 @@ dump(off_t current_offset, off_t end_offset)
+ 				n_bytes_read = 0;
+ 				break;
+ 			}
+-			n_needed = MIN(end_offset - current_offset, (off_t) G.bytes_per_block);
++			n_needed = MIN(end_offset - current_offset, (loff_t) G.bytes_per_block);
+ 			read_block(n_needed, block[idx], &n_bytes_read);
+ 			if (n_bytes_read < G.bytes_per_block)
+ 				break;
+@@ -1069,7 +1069,7 @@ dump(off_t current_offset, off_t end_offset)
+    traditional version of od.  */
+ 
+ static void
+-dump_strings(off_t address, off_t end_offset)
++dump_strings(loff_t address, loff_t end_offset)
+ {
+ 	unsigned bufsize = MAX(100, G.string_min);
+ 	unsigned char *buf = xmalloc(bufsize);
+@@ -1141,7 +1141,7 @@ dump_strings(off_t address, off_t end_offset)
+    leading '+' return nonzero and set *OFFSET to the offset it denotes.  */
+ 
+ static int
+-parse_old_offset(const char *s, off_t *offset)
++parse_old_offset(const char *s, loff_t *offset)
+ {
+ 	static const struct suffix_mult Bb[] = {
+ 		{ "B", 1024 },
+@@ -1196,11 +1196,11 @@ int od_main(int argc UNUSED_PARAM, char **argv)
+ 	unsigned opt;
+ 	int l_c_m;
+ 	/* The number of input bytes to skip before formatting and writing.  */
+-	off_t n_bytes_to_skip = 0;
++	loff_t n_bytes_to_skip = 0;
+ 	/* The offset of the first byte after the last byte to be formatted.  */
+-	off_t end_offset = 0;
++	loff_t end_offset = 0;
+ 	/* The maximum number of bytes that will be formatted.  */
+-	off_t max_bytes_to_format = 0;
++	loff_t max_bytes_to_format = 0;
+ 
+ 	INIT_G();
+ 
+@@ -1273,8 +1273,8 @@ int od_main(int argc UNUSED_PARAM, char **argv)
+ #if ENABLE_LONG_OPTS
+ 	if (opt & OPT_traditional) {
+ 		if (argv[0]) {
+-			off_t pseudo_start = -1;
+-			off_t o1, o2;
++			loff_t pseudo_start = -1;
++			loff_t o1, o2;
+ 
+ 			if (!argv[1]) { /* one arg */
+ 				if (parse_old_offset(argv[0], &o1)) {
+diff --git a/coreutils/truncate.c b/coreutils/truncate.c
+index 8d845f2..923c778 100644
+--- a/coreutils/truncate.c
++++ b/coreutils/truncate.c
+@@ -43,7 +43,7 @@ int truncate_main(int argc UNUSED_PARAM, char **argv)
+ 	int flags = O_WRONLY | O_NONBLOCK;
+ 	int ret = EXIT_SUCCESS;
+ 	char *size_str;
+-	off_t size;
++	loff_t size;
+ 
+ 	enum {
+ 		OPT_NOCREATE  = (1 << 0),
+diff --git a/editors/cmp.c b/editors/cmp.c
+index a4af6f4..29e7a81 100644
+--- a/editors/cmp.c
++++ b/editors/cmp.c
+@@ -45,7 +45,7 @@ int cmp_main(int argc UNUSED_PARAM, char **argv)
+ {
+ 	FILE *fp1, *fp2, *outfile = stdout;
+ 	const char *filename1, *filename2 = "-";
+-	off_t skip1 = 0, skip2 = 0, char_pos = 0;
++	loff_t skip1 = 0, skip2 = 0, char_pos = 0;
+ 	int line_pos = 1; /* Hopefully won't overflow... */
+ 	const char *fmt;
+ 	int c1, c2;
+diff --git a/include/bb_archive.h b/include/bb_archive.h
+index 10969b5..b1f8a4d 100644
+--- a/include/bb_archive.h
++++ b/include/bb_archive.h
+@@ -35,7 +35,7 @@ typedef struct file_header_t {
+ 	char *tar__uname;
+ 	char *tar__gname;
+ #endif
+-	off_t size;
++	loff_t size;
+ 	uid_t uid;
+ 	gid_t gid;
+ 	mode_t mode;
+@@ -71,10 +71,10 @@ typedef struct archive_handle_t {
+ 	void FAST_FUNC (*action_data)(struct archive_handle_t *);
+ 
+ 	/* Function that skips data */
+-	void FAST_FUNC (*seek)(int fd, off_t amount);
++	void FAST_FUNC (*seek)(int fd, loff_t amount);
+ 
+ 	/* Count processed bytes */
+-	off_t offset;
++	loff_t offset;
+ 
+ 	/* Archiver specific. Can make it a union if it ever gets big */
+ #if ENABLE_FEATURE_TAR_LONG_OPTIONS
+@@ -129,6 +129,7 @@ typedef struct archive_handle_t {
+ #if ENABLE_RPM
+ #define ARCHIVE_REPLACE_VIA_RENAME  (1 << 10)
+ #endif
++#define ARCHIVE_SHOW_PROGRESS       (1 << 11)
+ 
+ 
+ /* POSIX tar Header Block, from POSIX 1003.1-1990  */
+@@ -192,8 +193,8 @@ char get_header_tar_bz2(archive_handle_t *archive_handle) FAST_FUNC;
+ char get_header_tar_lzma(archive_handle_t *archive_handle) FAST_FUNC;
+ char get_header_tar_xz(archive_handle_t *archive_handle) FAST_FUNC;
+ 
+-void seek_by_jump(int fd, off_t amount) FAST_FUNC;
+-void seek_by_read(int fd, off_t amount) FAST_FUNC;
++void seek_by_jump(int fd, loff_t amount) FAST_FUNC;
++void seek_by_read(int fd, loff_t amount) FAST_FUNC;
+ 
+ const char *strip_unsafe_prefix(const char *str) FAST_FUNC;
+ 
+@@ -224,8 +225,8 @@ typedef struct transformer_state_t {
+ 	size_t   mem_output_size;
+ 	char     *mem_output_buf;
+ 
+-	off_t    bytes_out;
+-	off_t    bytes_in;  /* used in unzip code only: needs to know packed size */
++	loff_t    bytes_out;
++	loff_t    bytes_in;  /* used in unzip code only: needs to know packed size */
+ 	uint32_t crc32;
+ 	time_t   mtime;     /* gunzip code may set this on exit */
+ } transformer_state_t;
+diff --git a/include/libbb.h b/include/libbb.h
+index 8b226c0..15fa71e 100644
+--- a/include/libbb.h
++++ b/include/libbb.h
+@@ -65,6 +65,16 @@
+ #if defined(ANDROID) || defined(__ANDROID__)
+ # define endpwent() ((void)0)
+ # define endgrent() ((void)0)
++struct timex;
++pid_t getsid(pid_t pid);
++int stime(const time_t *t);
++int sethostname(const char *name, size_t len);
++int adjtimex(struct timex *buf);
++int pivot_root(const char *new_root, const char *put_old);
++ssize_t readahead(int fd, off64_t offset, size_t count);
++# include <mntent.h>
++int addmntent (FILE *stream, const struct mntent *mnt);
++char *hasmntopt (const struct mntent *mnt, const char *opt);
+ #endif
+ #ifdef HAVE_MNTENT_H
+ # include <mntent.h>
+@@ -81,8 +91,6 @@
+ #if ENABLE_SELINUX
+ # include <selinux/selinux.h>
+ # include <selinux/context.h>
+-# include <selinux/flask.h>
+-# include <selinux/av_permissions.h>
+ #endif
+ #if ENABLE_FEATURE_UTMP
+ # if defined __UCLIBC__ && ( \
+@@ -281,12 +289,6 @@ typedef unsigned long uoff_t;
+ #endif
+ /* scary. better ideas? (but do *test* them first!) */
+ #define OFF_T_MAX  ((off_t)~((off_t)1 << (sizeof(off_t)*8-1)))
+-/* Users report bionic to use 32-bit off_t even if LARGEFILE support is requested.
+- * We misdetected that. Don't let it build:
+- */
+-struct BUG_off_t_size_is_misdetected {
+-	char BUG_off_t_size_is_misdetected[sizeof(off_t) == sizeof(uoff_t) ? 1 : -1];
+-};
+ 
+ /* Some useful definitions */
+ #undef FALSE
+@@ -398,12 +400,12 @@ extern int get_console_fd_or_die(void) FAST_FUNC;
+ extern void console_make_active(int fd, const int vt_num) FAST_FUNC;
+ extern char *find_block_device(const char *path) FAST_FUNC;
+ /* bb_copyfd_XX print read/write errors and return -1 if they occur */
+-extern off_t bb_copyfd_eof(int fd1, int fd2) FAST_FUNC;
+-extern off_t bb_copyfd_size(int fd1, int fd2, off_t size) FAST_FUNC;
+-extern void bb_copyfd_exact_size(int fd1, int fd2, off_t size) FAST_FUNC;
++extern loff_t bb_copyfd_eof(int fd1, int fd2) FAST_FUNC;
++extern loff_t bb_copyfd_size(int fd1, int fd2, loff_t size) FAST_FUNC;
++extern void bb_copyfd_exact_size(int fd1, int fd2, loff_t size) FAST_FUNC;
+ /* "short" copy can be detected by return value < size */
+ /* this helper yells "short read!" if param is not -1 */
+-extern void complain_copyfd_and_die(off_t sz) NORETURN FAST_FUNC;
++extern void complain_copyfd_and_die(loff_t sz) NORETURN FAST_FUNC;
+ 
+ extern char bb_process_escape_sequence(const char **ptr) FAST_FUNC;
+ char* strcpy_and_process_escape_sequences(char *dst, const char *src) FAST_FUNC;
+@@ -517,9 +519,9 @@ int open_or_warn_stdin(const char *pathname) FAST_FUNC;
+ int xopen_stdin(const char *pathname) FAST_FUNC;
+ void xrename(const char *oldpath, const char *newpath) FAST_FUNC;
+ int rename_or_warn(const char *oldpath, const char *newpath) FAST_FUNC;
+-off_t xlseek(int fd, off_t offset, int whence) FAST_FUNC;
++loff_t xlseek(int fd, loff_t offset, int whence) FAST_FUNC;
+ int xmkstemp(char *template) FAST_FUNC;
+-off_t fdlength(int fd) FAST_FUNC;
++loff_t fdlength(int fd) FAST_FUNC;
+ 
+ uoff_t FAST_FUNC get_volume_size_in_bytes(int fd,
+ 		const char *override,
+@@ -1848,7 +1850,7 @@ extern struct globals *const ptr_to_globals;
+  * use bb_default_login_shell and following defines.
+  * If you change LIBBB_DEFAULT_LOGIN_SHELL,
+  * don't forget to change increment constant. */
+-#define LIBBB_DEFAULT_LOGIN_SHELL  "-/bin/sh"
++#define LIBBB_DEFAULT_LOGIN_SHELL  "-/system/bin/sh"
+ extern const char bb_default_login_shell[] ALIGN1;
+ /* "/bin/sh" */
+ #define DEFAULT_SHELL              (bb_default_login_shell+1)
+diff --git a/init/init.c b/init/init.c
+index 25bfaec..b27b79e 100644
+--- a/init/init.c
++++ b/init/init.c
+@@ -1086,7 +1086,7 @@ int init_main(int argc UNUSED_PARAM, char **argv)
+ 	/* Make sure environs is set to something sane */
+ 	putenv((char *) "HOME=/");
+ 	putenv((char *) bb_PATH_root_path);
+-	putenv((char *) "SHELL=/bin/sh");
++	putenv((char *) "SHELL=/system/bin/sh");
+ 	putenv((char *) "USER=root"); /* needed? why? */
+ 
+ 	if (argv[1])
+diff --git a/libbb/Kbuild.src b/libbb/Kbuild.src
+index 7fb6872..ff227b2 100644
+--- a/libbb/Kbuild.src
++++ b/libbb/Kbuild.src
+@@ -114,6 +114,10 @@ lib-y += xgethostbyname.o
+ lib-y += xreadlink.o
+ lib-y += xrealloc_vector.o
+ 
++# for android-busybox-ndk
++lib-y += mntent_r.o
++lib-y += missing_syscalls.o
++
+ lib-$(CONFIG_PLATFORM_LINUX) += match_fstype.o
+ 
+ lib-$(CONFIG_FEATURE_UTMP) += utmp.o
+diff --git a/libbb/copyfd.c b/libbb/copyfd.c
+index 7e35319..d1fb9f5 100644
+--- a/libbb/copyfd.c
++++ b/libbb/copyfd.c
+@@ -27,10 +27,10 @@
+  * size < 0 means "ignore write errors", used by tar --to-command
+  * size = 0 means "copy till EOF"
+  */
+-static off_t bb_full_fd_action(int src_fd, int dst_fd, off_t size)
++static loff_t bb_full_fd_action(int src_fd, int dst_fd, loff_t size)
+ {
+ 	int status = -1;
+-	off_t total = 0;
++	loff_t total = 0;
+ 	bool continue_on_write_error = 0;
+ 	ssize_t sendfile_sz;
+ #if CONFIG_FEATURE_COPYBUF_KB > 4
+@@ -135,7 +135,7 @@ void FAST_FUNC complain_copyfd_and_die(off_t sz)
+ }
+ #endif
+ 
+-off_t FAST_FUNC bb_copyfd_size(int fd1, int fd2, off_t size)
++loff_t FAST_FUNC bb_copyfd_size(int fd1, int fd2, loff_t size)
+ {
+ 	if (size) {
+ 		return bb_full_fd_action(fd1, fd2, size);
+@@ -143,9 +143,9 @@ off_t FAST_FUNC bb_copyfd_size(int fd1, int fd2, off_t size)
+ 	return 0;
+ }
+ 
+-void FAST_FUNC bb_copyfd_exact_size(int fd1, int fd2, off_t size)
++void FAST_FUNC bb_copyfd_exact_size(int fd1, int fd2, loff_t size)
+ {
+-	off_t sz = bb_copyfd_size(fd1, fd2, size);
++	loff_t sz = bb_copyfd_size(fd1, fd2, size);
+ 	if (sz == (size >= 0 ? size : -size))
+ 		return;
+ 	if (sz != -1)
+@@ -154,7 +154,7 @@ void FAST_FUNC bb_copyfd_exact_size(int fd1, int fd2, off_t size)
+ 	xfunc_die();
+ }
+ 
+-off_t FAST_FUNC bb_copyfd_eof(int fd1, int fd2)
++loff_t FAST_FUNC bb_copyfd_eof(int fd1, int fd2)
+ {
+ 	return bb_full_fd_action(fd1, fd2, 0);
+ }
+diff --git a/libbb/loop.c b/libbb/loop.c
+index d30b378..3a37775 100644
+--- a/libbb/loop.c
++++ b/libbb/loop.c
+@@ -56,7 +56,7 @@ char* FAST_FUNC query_loop(const char *device)
+ 	fd = open(device, O_RDONLY);
+ 	if (fd >= 0) {
+ 		if (ioctl(fd, BB_LOOP_GET_STATUS, &loopinfo) == 0) {
+-			dev = xasprintf("%"OFF_FMT"u %s", (off_t) loopinfo.lo_offset,
++			dev = xasprintf("%"OFF_FMT"u %s", (loff_t) loopinfo.lo_offset,
+ 					(char *)loopinfo.lo_file_name);
+ 		}
+ 		close(fd);
+diff --git a/libbb/missing_syscalls.c b/libbb/missing_syscalls.c
+index 0934128..5387fa3 100644
+--- a/libbb/missing_syscalls.c
++++ b/libbb/missing_syscalls.c
+@@ -40,6 +40,11 @@ int pivot_root(const char *new_root, const char *put_old)
+ 	return syscall(__NR_pivot_root, new_root, put_old);
+ }
+ 
++ssize_t readahead(int fd, off64_t offset, size_t count)
++{
++	return syscall(__NR_readahead, fd, offset, count);
++}
++
+ # if __ANDROID_API__ < 21
+ int tcdrain(int fd)
+ {
+diff --git a/libbb/mntent_r.c b/libbb/mntent_r.c
+new file mode 100644
+index 0000000..ea98a69
+--- /dev/null
++++ b/libbb/mntent_r.c
+@@ -0,0 +1,292 @@
++/* Utilities for reading/writing fstab, mtab, etc.
++   Copyright (C) 1995-2000, 2001, 2002, 2003, 2006, 2010, 2011
++   Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++// file extracted from patch 'Bionic Patch V1.0 (Vitaly Greck)':
++// https://busybox-android.googlecode.com/files/patch
++//
++// looks like its based on misc/mntent_r.c from glibc,
++// contains all fixes in current master (2012-03-19),
++// but is not source identical (mostly stuff removed)
++// using the upstream one fails to build
++
++
++#include <alloca.h>
++#include <mntent.h>
++#include <stdio.h>
++#include <string.h>
++#include <sys/types.h>
++
++int addmntent (FILE *stream, const struct mntent *mnt);
++char *hasmntopt (const struct mntent *mnt, const char *opt);
++
++
++/* Prepare to begin reading and/or writing mount table entries from the
++   beginning of FILE.  MODE is as for `fopen'.  */
++FILE *setmntent (const char *file, const char *mode)
++{
++  /* Extend the mode parameter with "c" to disable cancellation in the
++     I/O functions and "e" to set FD_CLOEXEC.  */
++  FILE *result;
++  size_t modelen = strlen (mode);
++  char newmode[modelen + 3];
++  memcpy (newmode, mode, modelen);
++  memcpy (newmode + modelen, "ce", 3);
++  result = fopen (file, newmode);
++
++  return result;
++}
++
++
++/* Close a stream opened with `setmntent'.  */
++int endmntent (FILE *stream)
++{
++  if (stream)		/* SunOS 4.x allows for NULL stream */
++    fclose (stream);
++  return 1;		/* SunOS 4.x says to always return 1 */
++}
++
++
++/* Since the values in a line are separated by spaces, a name cannot
++   contain a space.  Therefore some programs encode spaces in names
++   by the strings "\040".  We undo the encoding when reading an entry.
++   The decoding happens in place.  */
++static char *
++decode_name (char *buf)
++{
++  char *rp = buf;
++  char *wp = buf;
++
++  do
++    if (rp[0] == '\\' && rp[1] == '0' && rp[2] == '4' && rp[3] == '0')
++      {
++	/* \040 is a SPACE.  */
++	*wp++ = ' ';
++	rp += 3;
++      }
++    else if (rp[0] == '\\' && rp[1] == '0' && rp[2] == '1' && rp[3] == '1')
++      {
++	/* \011 is a TAB.  */
++	*wp++ = '\t';
++	rp += 3;
++      }
++    else if (rp[0] == '\\' && rp[1] == '0' && rp[2] == '1' && rp[3] == '2')
++      {
++	/* \012 is a NEWLINE.  */
++	*wp++ = '\n';
++	rp += 3;
++      }
++    else if (rp[0] == '\\' && rp[1] == '\\')
++      {
++	/* We have to escape \\ to be able to represent all characters.  */
++	*wp++ = '\\';
++	rp += 1;
++      }
++    else if (rp[0] == '\\' && rp[1] == '1' && rp[2] == '3' && rp[3] == '4')
++      {
++	/* \134 is also \\.  */
++	*wp++ = '\\';
++	rp += 3;
++      }
++    else
++      *wp++ = *rp;
++  while (*rp++ != '\0');
++
++  return buf;
++}
++
++
++/* Read one mount table entry from STREAM.  Returns a pointer to storage
++   reused on the next call, or null for EOF or error (use feof/ferror to
++   check).  */
++struct mntent *getmntent_r (FILE *stream, struct mntent *mp, char *buffer, int bufsiz)
++{
++  char *cp;
++  char *head;
++
++  do
++    {
++      char *end_ptr;
++
++      if (fgets (buffer, bufsiz, stream) == NULL)
++	{
++	  return NULL;
++	}
++
++      end_ptr = strchr (buffer, '\n');
++      if (end_ptr != NULL)	/* chop newline */
++	*end_ptr = '\0';
++      else
++	{
++	  /* Not the whole line was read.  Do it now but forget it.  */
++	  char tmp[1024];
++	  while (fgets (tmp, sizeof tmp, stream) != NULL)
++	    if (strchr (tmp, '\n') != NULL)
++	      break;
++	}
++
++      head = buffer + strspn (buffer, " \t");
++      /* skip empty lines and comment lines:  */
++    }
++  while (head[0] == '\0' || head[0] == '#');
++
++  cp = strsep (&head, " \t");
++  mp->mnt_fsname = cp != NULL ? decode_name (cp) : (char *) "";
++  if (head)
++    head += strspn (head, " \t");
++  cp = strsep (&head, " \t");
++  mp->mnt_dir = cp != NULL ? decode_name (cp) : (char *) "";
++  if (head)
++    head += strspn (head, " \t");
++  cp = strsep (&head, " \t");
++  mp->mnt_type = cp != NULL ? decode_name (cp) : (char *) "";
++  if (head)
++    head += strspn (head, " \t");
++  cp = strsep (&head, " \t");
++  mp->mnt_opts = cp != NULL ? decode_name (cp) : (char *) "";
++  switch (head ? sscanf (head, " %d %d ", &mp->mnt_freq, &mp->mnt_passno) : 0)
++    {
++    case 0:
++      mp->mnt_freq = 0;
++    case 1:
++      mp->mnt_passno = 0;
++    case 2:
++      break;
++    }
++
++  return mp;
++}
++
++struct mntent *getmntent (FILE *stream)
++{
++  static struct mntent m;
++  static char *getmntent_buffer;
++
++  #define BUFFER_SIZE 4096
++  if (getmntent_buffer == NULL) {
++    getmntent_buffer = (char *) malloc (BUFFER_SIZE);
++  }
++
++  return getmntent_r (stream, &m, getmntent_buffer, BUFFER_SIZE);
++  #undef BUFFER_SIZE
++}
++
++
++/* We have to use an encoding for names if they contain spaces or tabs.
++   To be able to represent all characters we also have to escape the
++   backslash itself.  This "function" must be a macro since we use
++   `alloca'.  */
++#define encode_name(name) \
++  do {									      \
++    const char *rp = name;						      \
++									      \
++    while (*rp != '\0')							      \
++      if (*rp == ' ' || *rp == '\t' || *rp == '\n' || *rp == '\\')	      \
++	break;								      \
++      else								      \
++	++rp;								      \
++									      \
++    if (*rp != '\0')							      \
++      {									      \
++	/* In the worst case the length of the string can increase to	      \
++	   four times the current length.  */				      \
++	char *wp;							      \
++									      \
++	rp = name;							      \
++	name = wp = (char *) alloca (strlen (name) * 4 + 1);		      \
++									      \
++	do								      \
++	  if (*rp == ' ')						      \
++	    {								      \
++	      *wp++ = '\\';						      \
++	      *wp++ = '0';						      \
++	      *wp++ = '4';						      \
++	      *wp++ = '0';						      \
++	    }								      \
++	  else if (*rp == '\t')						      \
++	    {								      \
++	      *wp++ = '\\';						      \
++	      *wp++ = '0';						      \
++	      *wp++ = '1';						      \
++	      *wp++ = '1';						      \
++	    }								      \
++	  else if (*rp == '\n')						      \
++	    {								      \
++	      *wp++ = '\\';						      \
++	      *wp++ = '0';						      \
++	      *wp++ = '1';						      \
++	      *wp++ = '2';						      \
++	    }								      \
++	  else if (*rp == '\\')						      \
++	    {								      \
++	      *wp++ = '\\';						      \
++	      *wp++ = '\\';						      \
++	    }								      \
++	  else								      \
++	    *wp++ = *rp;						      \
++	while (*rp++ != '\0');						      \
++      }									      \
++  } while (0)
++
++
++/* Write the mount table entry described by MNT to STREAM.
++   Return zero on success, nonzero on failure.  */
++int addmntent (FILE *stream, const struct mntent *mnt)
++{
++  struct mntent mntcopy = *mnt;
++  if (fseek (stream, 0, SEEK_END))
++    return 1;
++
++  /* Encode spaces and tabs in the names.  */
++  encode_name (mntcopy.mnt_fsname);
++  encode_name (mntcopy.mnt_dir);
++  encode_name (mntcopy.mnt_type);
++  encode_name (mntcopy.mnt_opts);
++
++  return (fprintf (stream, "%s %s %s %s %d %d\n",
++		   mntcopy.mnt_fsname,
++		   mntcopy.mnt_dir,
++		   mntcopy.mnt_type,
++		   mntcopy.mnt_opts,
++		   mntcopy.mnt_freq,
++		   mntcopy.mnt_passno) < 0
++	  || fflush (stream) != 0);
++}
++
++
++/* Search MNT->mnt_opts for an option matching OPT.
++   Returns the address of the substring, or null if none found.  */
++char *hasmntopt (const struct mntent *mnt, const char *opt)
++{
++  const size_t optlen = strlen (opt);
++  char *rest = mnt->mnt_opts, *p;
++
++  while ((p = strstr (rest, opt)) != NULL)
++    {
++      if ((p == rest || p[-1] == ',')
++	  && (p[optlen] == '\0' || p[optlen] == '=' || p[optlen] == ','))
++	return p;
++
++      rest = strchr (p, ',');
++      if (rest == NULL)
++	break;
++      ++rest;
++    }
++
++  return NULL;
++}
+diff --git a/libbb/xfuncs.c b/libbb/xfuncs.c
+index 206edb4..f671a8c 100644
+--- a/libbb/xfuncs.c
++++ b/libbb/xfuncs.c
+@@ -181,9 +181,9 @@ char* FAST_FUNC hex2bin(char *dst, const char *str, int count)
+ 
+ /* Return how long the file at fd is, if there's any way to determine it. */
+ #ifdef UNUSED
+-off_t FAST_FUNC fdlength(int fd)
++loff_t FAST_FUNC fdlength(int fd)
+ {
+-	off_t bottom = 0, top = 0, pos;
++	loff_t bottom = 0, top = 0, pos;
+ 	long size;
+ 
+ 	// If the ioctl works for this, return it.
+diff --git a/libbb/xfuncs_printf.c b/libbb/xfuncs_printf.c
+index 7348890..ac9efd1 100644
+--- a/libbb/xfuncs_printf.c
++++ b/libbb/xfuncs_printf.c
+@@ -20,6 +20,10 @@
+  * xfunc_printf.c contains those which do.
+  */
+ 
++#ifndef _LARGEFILE64_SOURCE
++/* For lseek64 */
++# define _LARGEFILE64_SOURCE
++#endif
+ #include "libbb.h"
+ 
+ 
+@@ -251,13 +255,13 @@ void FAST_FUNC xclose(int fd)
+ }
+ 
+ // Die with an error message if we can't lseek to the right spot.
+-off_t FAST_FUNC xlseek(int fd, off_t offset, int whence)
++loff_t FAST_FUNC xlseek(int fd, loff_t offset, int whence)
+ {
+-	off_t off = lseek(fd, offset, whence);
+-	if (off == (off_t)-1) {
++	loff_t off = lseek64(fd, offset, whence);
++	if (off == (loff_t)-1) {
+ 		if (whence == SEEK_SET)
+-			bb_perror_msg_and_die("lseek(%"OFF_FMT"u)", offset);
+-		bb_perror_msg_and_die("lseek");
++			bb_perror_msg_and_die("lseek64(%"OFF_FMT"u)", offset);
++		bb_perror_msg_and_die("lseek64");
+ 	}
+ 	return off;
+ }
+diff --git a/miscutils/strings.c b/miscutils/strings.c
+index 9f50182..7315239 100644
+--- a/miscutils/strings.c
++++ b/miscutils/strings.c
+@@ -28,7 +28,7 @@ int strings_main(int argc UNUSED_PARAM, char **argv)
+ {
+ 	int n, c, status = EXIT_SUCCESS;
+ 	unsigned count;
+-	off_t offset;
++	loff_t offset;
+ 	FILE *file;
+ 	char *string;
+ 	const char *fmt = "%s: ";
+diff --git a/miscutils/time.c b/miscutils/time.c
+index 19b0b44..ca6bd0f 100644
+--- a/miscutils/time.c
++++ b/miscutils/time.c
+@@ -30,6 +30,13 @@ typedef struct {
+ 
+ #define UL unsigned long
+ 
++#ifdef __ANDROID__
++static pid_t wait3(int* status, int options, struct rusage* rusage)
++{
++	return wait4(-1, status, options, rusage);
++}
++#endif
++
+ static const char default_format[] ALIGN1 = "real\t%E\nuser\t%u\nsys\t%T";
+ 
+ /* The output format for the -p option .*/
+diff --git a/networking/ifconfig.c b/networking/ifconfig.c
+index 8984b02..61c98d3 100644
+--- a/networking/ifconfig.c
++++ b/networking/ifconfig.c
+@@ -79,11 +79,13 @@
+ #endif
+ 
+ #if ENABLE_FEATURE_IPV6
++# ifndef __ANDROID__
+ struct in6_ifreq {
+ 	struct in6_addr ifr6_addr;
+ 	uint32_t ifr6_prefixlen;
+ 	int ifr6_ifindex;
+ };
++# endif
+ #endif
+ 
+ /*
+diff --git a/networking/interface.c b/networking/interface.c
+index e5723b4..8b117cd 100644
+--- a/networking/interface.c
++++ b/networking/interface.c
+@@ -56,6 +56,7 @@
+ 
+ #ifdef HAVE_AFINET6
+ # ifndef _LINUX_IN6_H
++#  ifndef __ANDROID__
+ /*
+  * This is from linux/include/net/ipv6.h
+  */
+@@ -65,6 +66,7 @@ struct in6_ifreq {
+ 	unsigned int ifr6_ifindex;
+ };
+ # endif
++# endif
+ #endif /* HAVE_AFINET6 */
+ 
+ /* Defines for glibc2.0 users. */
+diff --git a/networking/tftp.c b/networking/tftp.c
+index ad9308e..a091ac2 100644
+--- a/networking/tftp.c
++++ b/networking/tftp.c
+@@ -122,8 +122,8 @@ struct globals {
+ 	char block_buf[516];
+ 	char block_buf_tail[1];
+ #if ENABLE_FEATURE_TFTP_PROGRESS_BAR
+-	off_t pos;
+-	off_t size;
++	loff_t pos;
++	loff_t size;
+ 	const char *file;
+ 	bb_progress_t pmt;
+ #endif
+@@ -391,7 +391,7 @@ static int tftp_protocol(
+ 			goto send_pkt;
+ 
+ 		/* Need to add option to pkt */
+-		if ((&xbuf[io_bufsize - 1] - cp) < sizeof("blksize NNNNN tsize ") + sizeof(off_t)*3) {
++		if ((&xbuf[io_bufsize - 1] - cp) < sizeof("blksize NNNNN tsize ") + sizeof(loff_t)*3) {
+ 			bb_error_msg("remote filename is too long");
+ 			goto ret;
+ 		}
+@@ -419,7 +419,7 @@ static int tftp_protocol(
+ 			cp += sizeof("tsize");
+ 			st.st_size = 0;
+ 			fstat(local_fd, &st);
+-			cp += sprintf(cp, "%"OFF_FMT"u", (off_t)st.st_size) + 1;
++			cp += sprintf(cp, "%"OFF_FMT"u", (loff_t)st.st_size) + 1;
+ # if ENABLE_FEATURE_TFTP_PROGRESS_BAR
+ 			/* Save for progress bar. If 0 (tftp downloading),
+ 			 * we look at server's reply later */
+diff --git a/networking/wget.c b/networking/wget.c
+index 5c12423..c6db365 100644
+--- a/networking/wget.c
++++ b/networking/wget.c
+@@ -185,10 +185,10 @@ static const char wget_user_headers[] ALIGN1 =
+ 
+ /* Globals */
+ struct globals {
+-	off_t content_len;        /* Content-length of the file */
+-	off_t beg_range;          /* Range at which continue begins */
++	loff_t content_len;        /* Content-length of the file */
++	loff_t beg_range;          /* Range at which continue begins */
+ #if ENABLE_FEATURE_WGET_STATUSBAR
+-	off_t transferred;        /* Number of bytes transferred so far */
++	loff_t transferred;        /* Number of bytes transferred so far */
+ 	const char *curfile;      /* Name of current file being transferred */
+ 	bb_progress_t pmt;
+ #endif
+@@ -770,7 +770,7 @@ static void NOINLINE retrieve_file_data(FILE *dfp)
+ 			errno = 0;
+ 			rdsz = sizeof(G.wget_buf);
+ 			if (G.got_clen) {
+-				if (G.content_len < (off_t)sizeof(G.wget_buf)) {
++				if (G.content_len < (loff_t)sizeof(G.wget_buf)) {
+ 					if ((int)G.content_len <= 0)
+ 						break;
+ 					rdsz = (unsigned)G.content_len;
+@@ -862,8 +862,8 @@ static void NOINLINE retrieve_file_data(FILE *dfp)
+ 	 * failed to restart *without* losing the almost complete file.
+ 	 */
+ 	{
+-		off_t pos = lseek(G.output_fd, 0, SEEK_CUR);
+-		if (pos != (off_t)-1)
++		loff_t pos = lseek(G.output_fd, 0, SEEK_CUR);
++		if (pos != (loff_t)-1)
+ 			ftruncate(G.output_fd, pos);
+ 	}
+ 
+diff --git a/shell/ash.c b/shell/ash.c
+index 5613e1f..dc5c225 100644
+--- a/shell/ash.c
++++ b/shell/ash.c
+@@ -13127,6 +13127,7 @@ int ash_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
+ int ash_main(int argc UNUSED_PARAM, char **argv)
+ {
+ 	const char *shinit;
++	const char *hp;
+ 	volatile smallint state;
+ 	struct jmploc jmploc;
+ 	struct stackmark smark;
+@@ -13187,22 +13188,14 @@ int ash_main(int argc UNUSED_PARAM, char **argv)
+ 	setstackmark(&smark);
+ 	procargs(argv);
+ 
+-	if (argv[0] && argv[0][0] == '-')
+-		isloginsh = 1;
+-	if (isloginsh) {
+-		const char *hp;
++	isloginsh = 1;
+ 
+-		state = 1;
+-		read_profile("/etc/profile");
++	state = 1;
++	read_profile("/system/etc/profile");
+  state1:
+-		state = 2;
+-		hp = lookupvar("HOME");
+-		if (hp) {
+-			hp = concat_path_file(hp, ".profile");
+-			read_profile(hp);
+-			free((char*)hp);
+-		}
+-	}
++	state = 2;
++	if (!hp)
++		setvar("HISTFILE", "/data/ash_history", 0);
+  state2:
+ 	state = 3;
+ 	if (
+@@ -13232,15 +13225,10 @@ int ash_main(int argc UNUSED_PARAM, char **argv)
+ 	if (sflag || minusc == NULL) {
+ #if MAX_HISTORY > 0 && ENABLE_FEATURE_EDITING_SAVEHISTORY
+ 		if (iflag) {
+-			const char *hp = lookupvar("HISTFILE");
++			hp = lookupvar("HISTFILE");
+ 			if (!hp) {
+-				hp = lookupvar("HOME");
+-				if (hp) {
+-					hp = concat_path_file(hp, ".ash_history");
+-					setvar0("HISTFILE", hp);
+-					free((char*)hp);
+-					hp = lookupvar("HISTFILE");
+-				}
++				setvar("HISTFILE", "/data/ash_history", 0);
++				hp = lookupvar("HISTFILE");
+ 			}
+ 			if (hp)
+ 				line_input_state->hist_file = hp;
+diff --git a/util-linux/mkswap.c b/util-linux/mkswap.c
+index b5d2c49..321881f 100644
+--- a/util-linux/mkswap.c
++++ b/util-linux/mkswap.c
+@@ -89,7 +89,7 @@ int mkswap_main(int argc UNUSED_PARAM, char **argv)
+ {
+ 	int fd;
+ 	unsigned pagesize;
+-	off_t len;
++	loff_t len;
+ 	const char *label = "";
+ 
+ 	opt_complementary = "-1"; /* at least one param */

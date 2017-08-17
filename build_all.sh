@@ -1,10 +1,25 @@
 #!/bin/bash
 
 RDIR=$(pwd)
-PREFIXDIR='/data/local/nhsystem'
 
+# Get all submodules
 git submodule init
 git submodule update
+
+# if $@, build and copy only that project
+if [ "$1" ]; then
+	PROJECTS="$*"
+else
+	PROJECTS="busybox hid_keyboard lz4 mkbootimg libncurses libreadline libtermcap \
+			  dropbear socat nmap tcpdump libusb proxmark3 screenres flash_image"
+fi
+
+f_exists() {
+	type $1 > /dev/null 2>&1 || return 1
+}
+
+#unset static
+export STATIC=
 
 build_dropbear() {
     echo "Building dropbear..."
@@ -20,6 +35,7 @@ build_dropbear() {
 	
 	./configure --host=$HOST --disable-utmp --disable-wtmp --disable-utmpx --disable-utmpx --disable-zlib --disable-syslog --prefix=$PREFIXDIR
     make clean all
+    $STRIP --strip-all dropbear dropbearconvert dropbearkey dbclient
 }
 
 copy_dropbear() {
@@ -31,23 +47,26 @@ copy_dropbear() {
 	make clean
 }
 
-build_busybox() {
+setup_busybox() {
 	cd $RDIR/busybox
-	# Check if patch already applied
-	patch -p1 -N --dry-run --silent < ../patches/busybox.patch 2>/dev/null
-	if [ $? -eq 1 ]; then
-		#apply the patch
-		patch -p1 -N < ../patches/busybox.patch
+	git reset --hard HEAD
+	git clean -xdf
+	# check if patch is applicable
+	patch -p1 -N --dry-run --silent < $RDIR/patches/busybox.diff 2>/dev/null
+	if [ $? -eq 0 ]; then
+		# apply the patch
+		patch -p1 -N < $RDIR/patches/busybox.diff
+	else
+		echo "Can't patch busybox!"
+		exit 1
 	fi
-	cp ../patches/busybox_config .config
-	make CROSS_COMPILE=$CROSS_COMPILE "LDFLAGS=-static -fuse-ld=bfd"
+	cp $RDIR/patches/busybox_config .config
 }
 
-copy_busybox(){
+build_busybox() {
 	cd $RDIR/busybox
-	mv busybox $OUT/
-	mv busybox_unstripped $OUT/
-	make clean
+	make clean all EXTRAVERSION=-NetHunter
+	$STRIP --strip-all busybox
 }
 
 build_nmap(){
@@ -69,7 +88,6 @@ build_nmap(){
 	LDFLAGS="-rdynamic -pie" ./configure --host=$HOST --without-ndiff --without-nmap-update --without-zenmap \
 	--with-liblua=included --with-libpcap=internal --with-pcap=linux --enable-static --prefix=$PREFIXDIR/nmap7 \
 	--with-openssl=$PREFIXDIR/openssl
-
 	make
 	make install
 }
@@ -79,9 +97,8 @@ copy_nmap(){
 	make clean
     cd $RDIR/nmap
 	make clean
-	$STRIP $PREFIXDIR/nmap7/bin/nmap
-	$STRIP $PREFIXDIR/nmap7/bin/ncat
-	$STRIP $PREFIXDIR/nmap7/bin/nping
+    $STRIP --strip-all nmap
+    $STRIP --strip-all ncat
 	cp -rf $PREFIXDIR/nmap7/bin/* $OUT/
 
 	# Remove nmap/openssl (binaries are copied)
@@ -103,11 +120,11 @@ build_tcpdump(){
 	./configure --host=$HOST ac_cv_linux_vers=2 --with-crypto=no
 	make
 	make install
+    $STRIP --strip-all tcpdump
 }
 
 copy_tcpdump(){
 	cd $RDIR/tcpdump
-	$STRIP $SYSROOT/usr/local/sbin/tcpdump
 	mv $SYSROOT/usr/local/sbin/tcpdump $OUT/
 	make clean
 }
@@ -144,6 +161,7 @@ build_lz4() {
 	echo "Building lz4..."
 	cd $RDIR/lz4
 	make clean all
+	$STRIP --strip-all lz4
 }
 
 copy_lz4() {
@@ -155,7 +173,9 @@ copy_lz4() {
 build_mkbootimg() {
 	echo "Building mkbootimg and unpackbootimg..."
 	cd $RDIR/mkbootimg
-	make clean all CROSS_COMPILE=$CROSS_COMPILE "LDFLAGS=-static"
+	make clean all
+	$STRIP --strip-all mkbootimg
+	$STRIP --strip-all unpackbootimg
 }
 
 copy_mkbootimg() {
@@ -168,6 +188,7 @@ build_libreadline() {
 	echo "Building libreadline.so..."
 	cd $RDIR/libreadline
 	make clean all
+	$STRIP libreadline.so
 }
 
 copy_libreadline() {
@@ -180,6 +201,7 @@ build_libtermcap() {
 	echo "Building libtermcap.so..."
 	cd $RDIR/libtermcap
 	make clean all
+	$STRIP libtermcap.so
 }
 
 copy_libtermcap() {
@@ -192,6 +214,7 @@ build_libusb() {
 	echo "Building libusb.so..."
 	cd $RDIR/libusb
 	make clean all
+	$STRIP libusb.so
 }
 
 copy_libusb() {
@@ -204,6 +227,7 @@ build_proxmark3() {
 	echo "Building proxmark3..."
 	cd $RDIR/proxmark3
 	make clean all
+	$STRIP --strip-all proxmark3
 }
 
 copy_proxmark3() {
@@ -216,11 +240,58 @@ build_screenres() {
 	echo "Building screenres..."
 	cd $RDIR/screenres
 	make clean all
+	$STRIP --strip-all screenres
 }
 
 copy_screenres() {
 	cd $RDIR/screenres
 	mv screenres $OUT/
+	make clean
+}
+
+build_flash_image() {
+	echo "Building flash_image..."
+	cd $RDIR/flash_image
+	make clean all
+	$STRIP --strip-all flash_image
+}
+
+copy_flash_image() {
+	cd $RDIR/flash_image
+	mv flash_image $OUT/
+	make clean
+}
+
+setup_libncurses() {
+	cd $RDIR/libncurses
+	git reset --hard HEAD
+	git clean -xdf
+	cp -f $RDIR/patches/libncurses_makefile Makefile
+}
+
+build_libncurses() {
+	echo "Building libncurses.so..."
+	cd $RDIR/libncurses
+	make clean all
+	$STRIP libncurses.so
+}
+
+copy_libncurses() {
+	cd $RDIR/libncurses
+	mv libncurses.so $OUT/
+	make clean
+}
+
+build_flash_image() {
+	echo "Building flash_image..."
+	cd $RDIR/flash_image
+	make clean all
+	$STRIP --strip-all flash_image
+}
+
+copy_flash_image() {
+	cd $RDIR/flash_image
+	mv flash_image $OUT/
 	make clean
 }
 
@@ -230,35 +301,32 @@ mkdir $RDIR/out
 for arch in armhf arm64 amd64 i386; do
 	OUT=$RDIR/out/$arch
 	mkdir -p $OUT
+
+	# set up projects that need it
+	for project in $PROJECTS; do
+		f_exists setup_$project && setup_$project
+	done
+
+	# these should be compiled static (dynamic is not safe in recovery environment)
+	STATIC=1 ARCH=$arch . $RDIR/android
+	for project in $PROJECTS; do
+		case $project in
+			busybox|lz4|mkbootimg|screenres|flash_image) build_$project;;
+		esac
+	done
+
+	# these should be compiled dynamic
 	ARCH=$arch . $RDIR/android
+	for project in $PROJECTS; do
+		case $project in
+			libncurses|libreadline|libtermcap|libusb|proxmark3|hid_keyboard|socat|nmap|tcpdump|dropbear) build_$project;;
+		esac
+	done
 
-	build_dropbear
-	build_busybox
-    build_socat
-	build_nmap
-	build_tcpdump
-	build_hid_keyboard
-	build_lz4
-	build_mkbootimg
-	build_libreadline
-	build_libtermcap
-	build_libusb
-	build_proxmark3
-	build_screenres
-
-	copy_dropbear
-	copy_busybox
-    copy_socat
-	copy_nmap
-	copy_tcpdump
-	copy_hid_keyboard
-	copy_lz4
-	copy_mkbootimg
-	copy_libreadline
-	copy_libtermcap
-	copy_libusb
-	copy_proxmark3
-	copy_screenres
+	# copy all projects to out folder
+	for project in $PROJECTS; do
+		f_exists copy_$project && copy_$project
+	done
 done
 
 echo "Done."
