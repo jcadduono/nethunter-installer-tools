@@ -13,10 +13,10 @@
 [submodule "socat-android"]
 	path = socat-android
 	url = https://github.com/binkybear/socat-android.git
-[submodule "busybox"]
-	path = busybox
-	url = git://busybox.net/busybox.git
-	branch = master
 [submodule "libncurses"]
 	path = libncurses
 	url = https://github.com/CyanogenMod/android_external_libncurses.git
+[submodule "busybox"]
+	path = busybox
+	url = git://git.busybox.net/busybox
+	branch = master
