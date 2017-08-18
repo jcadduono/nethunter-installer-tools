@@ -11,7 +11,7 @@ if [ "$1" ]; then
 	PROJECTS="$*"
 else
 	PROJECTS="busybox hid_keyboard lz4 mkbootimg libncurses libreadline libtermcap \
-			  dropbear socat nmap tcpdump libusb proxmark3 screenres flash_image"
+			  dropbear socat nmap tcpdump libusb proxmark3 screenres flash_image xz"
 fi
 
 f_exists() {
@@ -32,7 +32,6 @@ build_dropbear() {
 		#apply the patch
 		patch -p1 -N < ../patches/dropbear.patch
 	fi
-	
 	./configure --host=$HOST --disable-utmp --disable-wtmp --disable-utmpx --disable-utmpx --disable-zlib --disable-syslog --prefix=$PREFIXDIR
     make clean all
     $STRIP --strip-all dropbear dropbearconvert dropbearkey dbclient
@@ -49,8 +48,8 @@ copy_dropbear() {
 
 setup_busybox() {
 	cd $RDIR/busybox
-	git reset --hard HEAD
 	git clean -xdf
+	git reset --hard b9b7aa1
 	# check if patch is applicable
 	patch -p1 -N --dry-run --silent < $RDIR/patches/busybox.diff 2>/dev/null
 	if [ $? -eq 0 ]; then
@@ -65,7 +64,7 @@ setup_busybox() {
 
 build_busybox() {
 	cd $RDIR/busybox
-	make clean all EXTRAVERSION=-NetHunter
+	make clean all CROSS_COMPILE=$CROSS_COMPILE "LDFLAGS=-static -fuse-ld=bfd" $EXTRAVERSION
 	$STRIP --strip-all busybox
 }
 
@@ -156,6 +155,25 @@ copy_hid_keyboard() {
 	mv hid-keyboard $OUT/
 	make clean
 }
+
+build_xz() {
+	echo "Building xz..."
+	cd $RDIR/xz
+	./autogen.sh
+	./configure --host=$HOST
+	make clean all
+	cd src/xz
+	make clean all
+	cd .libs
+	$STRIP --strip-all xz
+}
+
+copy_xz() {
+	cd $RDIR/xz
+	mv src/xz/.libs/xz $OUT/
+	make clean
+}
+
 
 build_lz4() {
 	echo "Building lz4..."
@@ -311,7 +329,7 @@ for arch in armhf arm64 amd64 i386; do
 	STATIC=1 ARCH=$arch . $RDIR/android
 	for project in $PROJECTS; do
 		case $project in
-			busybox|lz4|mkbootimg|screenres|flash_image) build_$project;;
+			busybox|lz4|mkbootimg|screenres|flash_image|xz) build_$project;;
 		esac
 	done
 

@@ -20,3 +20,6 @@
 	path = busybox
 	url = git://git.busybox.net/busybox
 	branch = master
+[submodule "xz"]
+	path = xz
+	url = https://git.tukaani.org/xz.git
