@@ -23,3 +23,6 @@
 [submodule "xz"]
 	path = xz
 	url = https://git.tukaani.org/xz.git
+[submodule "proxmark3"]
+	path = proxmark3
+	url = https://github.com/Proxmark/proxmark3.git
