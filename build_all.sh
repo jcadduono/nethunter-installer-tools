@@ -244,12 +244,12 @@ copy_libusb() {
 build_proxmark3() {
 	echo "Building proxmark3..."
 	cd $RDIR/proxmark3
-	make clean all
-	$STRIP --strip-all proxmark3
+	make client clean all
+	$STRIP --strip-all client/proxmark3
 }
 
 copy_proxmark3() {
-	cd $RDIR/proxmark3
+	cd $RDIR/proxmark3/client
 	mv proxmark3 $OUT/
 	make clean
 }
