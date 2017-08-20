@@ -19,3 +19,8 @@ docker run --env-file ./env.list -v "`pwd`/out:/root/nethunter-installer-tools/o
 ```
 
 Output binaries will be located in the "out" folder that is created.
+
+If you would rather run it from a command line for testing:
+```
+docker run -i -t --entrypoint /bin/bash -t nethunter-tools
+```
