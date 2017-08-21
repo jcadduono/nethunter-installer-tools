@@ -139,8 +139,7 @@ build_socat(){
 }
 
 copy_socat(){
-    mv $SYSROOT/usr/bin/socat $OUT
-    rm -f $SYSROOT/usr/bin/socat
+    mv $RDIR/socat-android/socat $OUT
     make clean
 }
 
